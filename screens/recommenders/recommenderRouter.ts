@@ -14,7 +14,6 @@ import type {
 import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommender";
 import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommender";
 import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
-import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
 
@@ -38,8 +37,10 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
   return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
 }
 
-function shouldUseGcd(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
+function shouldUseGcd(_input: RecommenderInput): boolean {
+  // Browser-side GCD requests are currently blocked by CORS, so keep this off
+  // until a server proxy exists.
+  return false;
 }
 
 function extractDocs(result: RecommendationResult | null | undefined): RecommendationDoc[] {
@@ -118,7 +119,6 @@ async function fetchBothEngines(
   const includeGcd = shouldUseGcd(input);
 
   if (includeKitsu) requests.push(getKitsuMangaRecommendations(input));
-  if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(input));
 
   const results = await Promise.allSettled(requests);
 
@@ -184,18 +184,9 @@ const normalizedCandidates = [
   console.log("[NovelIdeas][recommenderRouter] finalRecommender", {
     deckKey: input.deckKey,
     preferredEngine,
-    includeKitsu,
-    includeGcd,
     googleCount: extractDocs(google).length,
     openLibraryCount: extractDocs(openLibrary).length,
-    kitsuCount: extractDocs(kitsu).length,
-    gcdCount: extractDocs(gcd).length,
     mergedCount: mergedDocs.length,
-    googleNormalizedCount: googleCandidates.length,
-    openLibraryNormalizedCount: openLibraryCandidates.length,
-    kitsuNormalizedRawCount: kitsuCandidatesRaw.length,
-    kitsuNormalizedCount: includeKitsuCapped.length,
-    gcdNormalizedCount: gcdCandidates.length,
     normalizedCount: normalizedCandidates.length,
     profileOverrideKeys: input.profileOverride ? Object.keys(input.profileOverride) : [],
   });
@@ -215,15 +206,7 @@ const normalizedCandidates = [
   if (!base) {
     return {
       engineId: preferredEngine,
-      engineLabel: [true, includeGcd, includeKitsu].filter(Boolean).length >= 3
-        ? "Google Books + Open Library + Kitsu + GCD"
-        : includeGcd && includeKitsu
-        ? "Google Books + Open Library + Kitsu + GCD"
-        : includeKitsu
-        ? "Google Books + Open Library + Kitsu"
-        : includeGcd
-        ? "Google Books + Open Library + GCD"
-        : "Google Books + Open Library",
+      engineLabel: shouldUseKitsu(input) ? "Google Books + Open Library + Kitsu" : "Google Books + Open Library",
       deckKey: input.deckKey,
       domainMode:
         input.deckKey === "k2"
