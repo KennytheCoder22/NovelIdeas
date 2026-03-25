@@ -1344,15 +1344,16 @@ const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
     }
   }
 
-  let remainingBackfillPool = credibleOnly.filter(
+let remainingBackfillPool: Candidate[] = [];
+
+if (selected.length < targetMin) {
+  remainingBackfillPool = credibleOnly.filter(
     (candidate) => !seen.has(identityKey(candidate)) && !isHardMismatch(candidate, lane, queryLadder)
   );
-let remainingBackfillPool: Candidate[] = [];
-  if (selected.length < targetMin) {
-    logFinalPassStage('remainingBackfillPool', remainingBackfillPool);
-    addRanked(remainingBackfillPool, queryLadder);
-    logFinalPassStage('selectedAfterBackfill', selected);
-  }
+  logFinalPassStage('remainingBackfillPool', remainingBackfillPool);
+  addRanked(remainingBackfillPool, queryLadder);
+  logFinalPassStage('selectedAfterBackfill', selected);
+}
 
   const selectedWithTeenFormatFloor = enforceTeenVisualFormatFloor(
     selected,
