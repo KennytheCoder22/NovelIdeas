@@ -1344,7 +1344,7 @@ const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
     }
   }
 
-  const remainingBackfillPool = credibleOnly.filter(
+  let remainingBackfillPool = credibleOnly.filter(
     (candidate) => !seen.has(identityKey(candidate)) && !isHardMismatch(candidate, lane, queryLadder)
   );
 
