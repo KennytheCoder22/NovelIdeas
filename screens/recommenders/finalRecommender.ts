@@ -1357,7 +1357,7 @@ const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
   }
 
   if (selected.length < targetMin) {
-    const remaining = credibleOnly.filter((candidate) => !seen.has(identityKey(candidate)) && !isHardMismatch(candidate, lane, queryLadder));
+    const remainingBackfillPool = credibleOnly.filtery.filter((candidate) => !seen.has(identityKey(candidate)) && !isHardMismatch(candidate, lane, queryLadder));
     logFinalPassStage('remainingBackfillPool', remaining);
     addRanked(remaining, queryLadder);
     logFinalPassStage('selectedAfterBackfill', selected);
