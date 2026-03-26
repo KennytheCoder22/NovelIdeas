@@ -37,10 +37,8 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
   return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
 }
 
-function shouldUseGcd(_input: RecommenderInput): boolean {
-  // Browser-side GCD requests are currently blocked by CORS, so keep this off
-  // until a server proxy exists.
-  return false;
+function shouldUseGcd(input: RecommenderInput): boolean {
+  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
 }
 
 function extractDocs(result: RecommendationResult | null | undefined): RecommendationDoc[] {
@@ -89,6 +87,26 @@ function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
   return out;
 }
 
+async function fetchGcdFromApi(input: RecommenderInput): Promise<RecommendationResult | null> {
+  try {
+    const res = await fetch("/api/gcd", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!res.ok) throw new Error(`GCD API failed: ${res.status}`);
+
+    const data = await res.json();
+    return data?.result ?? null;
+  } catch (err) {
+    console.warn("[NovelIdeas][recommenderRouter] GCD API error", err);
+    return null;
+  }
+}
+
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
   if (engine === "googleBooks") return getGoogleBooksRecommendations(input);
 
@@ -119,6 +137,7 @@ async function fetchBothEngines(
   const includeGcd = shouldUseGcd(input);
 
   if (includeKitsu) requests.push(getKitsuMangaRecommendations(input));
+  if (includeGcd) requests.push(fetchGcdFromApi(input) as Promise<RecommendationResult>);
 
   const results = await Promise.allSettled(requests);
 

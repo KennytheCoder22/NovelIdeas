@@ -771,7 +771,7 @@ export default function SwipeDeckScreen(props: Props) {
     position.setValue({ x: 0, y: 0 });
   }, [deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
 
-  const totalSwipes = rightSwipes + leftSwipes + downSwipes;
+  const totalSwipes = rightSwipes + leftSwipes;
   const isDone = totalSwipes >= requiredSwipes || index >= cards.length;
   const currentCard: SwipeDeckCard | null = !isDone ? cards[index] : null;
 
