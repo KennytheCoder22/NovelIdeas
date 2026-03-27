@@ -1472,14 +1472,15 @@ function handleLeft() {
               <View style={styles.cardStage} onLayout={(e) => setCardStageHeight(e.nativeEvent.layout.height)}>
                 <View style={styles.cardWrap}>
                   <Animated.View
-                    {...cardGestureHandlers}
-                    style={[
-                      styles.card,
-                      needsCardOffset && styles.cardOffset,
-                      cardFitStyle,
-                      { transform: [{ translateX: position.x }, { translateY: position.y }] },
-                    ]}
-                  >
+  {...(Platform.OS === "web" ? {} : cardGestureHandlers)}
+  style={[
+    styles.card,
+    needsCardOffset && styles.cardOffset,
+    cardFitStyle,
+    Platform.OS === "web" ? { pointerEvents: "auto" } : null,
+    { transform: [{ translateX: position.x }, { translateY: position.y }] },
+  ]}
+>
                     {currentSwipeCoverUri ? (
                       <Image source={{ uri: currentSwipeCoverUri }} style={styles.swipeCover} resizeMode="contain" />
                     ) : null}
