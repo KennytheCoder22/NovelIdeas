@@ -41,6 +41,13 @@ function shouldUseGcd(input: RecommenderInput): boolean {
   return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
 }
 
+function buildEngineLabel(input: RecommenderInput): string {
+  const parts = ["Google Books", "Open Library"];
+  if (shouldUseKitsu(input)) parts.push("Kitsu");
+  if (shouldUseGcd(input)) parts.push("GCD");
+  return parts.join(" + " );
+}
+
 function extractDocs(result: RecommendationResult | null | undefined): RecommendationDoc[] {
   if (!result) return [];
 
@@ -174,30 +181,20 @@ const openLibraryCandidates = normalizeCandidates(openLibraryDocs, "openLibrary"
 const kitsuCandidatesRaw = normalizeCandidates(kitsuDocs, "kitsu");
 const gcdCandidates = normalizeCandidates(gcdDocs, "gcd");
 
-// ---- KITSU MODERATION LAYER ----
-
-// Deduplicate by title (avoid Naruto spam)
+// Deduplicate Kitsu by title to avoid franchise spam, but do not cap early.
 const seenTitles = new Set<string>();
-const kitsuCandidates = kitsuCandidatesRaw.filter((c) => {
-  const title = (c.title || "").toLowerCase().trim();
+const kitsuCandidates = kitsuCandidatesRaw.filter((candidate) => {
+  const title = (candidate.title || "").toLowerCase().trim();
   if (!title || seenTitles.has(title)) return false;
   seenTitles.add(title);
   return true;
 });
 
-// Cap Kitsu influence
-const MAX_KITSU = 3;
-
-// Only include Kitsu if visual intent is strong
-const includeKitsuCapped = shouldUseKitsu(input)
-  ? kitsuCandidates.slice(0, MAX_KITSU)
-  : [];
-
 const normalizedCandidates = [
   ...googleCandidates,
   ...openLibraryCandidates,
-  ...includeKitsuCapped,
-  ...gcdCandidates,
+  ...(shouldUseKitsu(input) ? kitsuCandidates : []),
+  ...(shouldUseGcd(input) ? gcdCandidates : []),
 ];
 
   console.log("[NovelIdeas][recommenderRouter] finalRecommender", {
@@ -207,6 +204,10 @@ const normalizedCandidates = [
     openLibraryCount: extractDocs(openLibrary).length,
     mergedCount: mergedDocs.length,
     normalizedCount: normalizedCandidates.length,
+    googleCandidateCount: googleCandidates.length,
+    openLibraryCandidateCount: openLibraryCandidates.length,
+    kitsuCandidateCount: kitsuCandidates.length,
+    gcdCandidateCount: gcdCandidates.length,
     profileOverrideKeys: input.profileOverride ? Object.keys(input.profileOverride) : [],
   });
 
@@ -225,7 +226,7 @@ const normalizedCandidates = [
   if (!base) {
     return {
       engineId: preferredEngine,
-      engineLabel: shouldUseKitsu(input) ? "Google Books + Open Library + Kitsu" : "Google Books + Open Library",
+      engineLabel: buildEngineLabel(input),
       deckKey: input.deckKey,
       domainMode:
         input.deckKey === "k2"
@@ -246,7 +247,7 @@ const normalizedCandidates = [
   return {
     ...base,
     engineId: preferredEngine,
-    engineLabel: shouldUseKitsu(input) ? "Google Books + Open Library + Kitsu" : "Google Books + Open Library",
+    engineLabel: buildEngineLabel(input),
     builtFromQuery: queryParts.join(" || "),
     items: rankedDocs.map((doc) => ({ kind: "open_library", doc })),
   } as RecommendationResult;

@@ -1267,10 +1267,29 @@ function runFinalPass(
   const targetMin = Math.max(8, profile.minKeep || 0);
   const targetMax = Math.max(10, targetMin);
   const ladders = buildRelaxedLadders(queryLadder);
+
+  const mangaSignal = queryLadder.filter((term) => /\b(manga|anime|manhwa|manhua)\b/i.test(term.term)).length;
+  const graphicSignal = queryLadder.filter((term) => /\b(graphic|graphic novel|graphic novels|comic|comics)\b/i.test(term.term)).length;
+  const visualStrength = mangaSignal + graphicSignal;
+
+  let maxKitsu = 1;
+  let maxGCD = 1;
+
+  if (visualStrength >= 3) {
+    maxKitsu = 4;
+    maxGCD = 4;
+  } else if (visualStrength >= 1) {
+    maxKitsu = 2;
+    maxGCD = 2;
+  }
+
   logFinalPassStage('laddersBuilt', credibleOnly, {
     laddersCount: ladders.length,
     targetMin,
     targetMax,
+    visualStrength,
+    maxKitsu,
+    maxGCD,
   });
 
   const memory = {
@@ -1283,6 +1302,8 @@ function runFinalPass(
   };
   const selected: Candidate[] = [];
   const seen = new Set<string>();
+
+  const sourceCounts: Record<string, number> = {};
 
 const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
   const scored = pool.map((candidate) => {
@@ -1317,8 +1338,16 @@ const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
     const candidate = entry.candidate;
     const key = identityKey(candidate);
     if (seen.has(key)) continue;
+
+    const source = candidate.source || 'unknown';
+    const currentCount = sourceCounts[source] || 0;
+
+    if (source === 'kitsu' && currentCount >= maxKitsu) continue;
+    if (source === 'gcd' && currentCount >= maxGCD) continue;
+
     selected.push(candidate);
     seen.add(key);
+    sourceCounts[source] = currentCount + 1;
     if (selected.length >= targetMax) break;
   }
 };
