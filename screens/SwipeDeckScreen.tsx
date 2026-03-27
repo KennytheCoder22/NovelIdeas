@@ -886,7 +886,12 @@ function handleLeft() {
 
   const panResponder = useMemo(() => {
     return PanResponder.create({
-      onMoveShouldSetPanResponder: () => !!currentCard,
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        if (!currentCard) return false;
+        return Math.abs(gesture.dx) > 6 || Math.abs(gesture.dy) > 6;
+      },
+      onPanResponderTerminationRequest: () => true,
       onPanResponderGrant: () => {
         swipeAxisLock.current = null;
       },
@@ -911,10 +916,15 @@ function handleLeft() {
         position.setValue({ x: dx, y: 0 });
       },
       onPanResponderRelease: (_, gesture) => {
-        if (!currentCard) return;
+        if (!currentCard) {
+          swipeAxisLock.current = null;
+          return;
+        }
+
         const lock = swipeAxisLock.current;
         const dx = gesture.dx;
         const dy = Math.max(0, gesture.dy);
+        swipeAxisLock.current = null;
 
         if (lock === "y") {
           if (dy > swipeThresholdDown) {
@@ -939,6 +949,15 @@ function handleLeft() {
           return;
         }
 
+        Animated.spring(position, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+          friction: 6,
+          tension: 80,
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        swipeAxisLock.current = null;
         Animated.spring(position, {
           toValue: { x: 0, y: 0 },
           useNativeDriver: false,
