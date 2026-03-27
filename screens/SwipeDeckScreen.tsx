@@ -885,6 +885,10 @@ function handleLeft() {
   }
 
   const panResponder = useMemo(() => {
+    if (Platform.OS === "web") {
+      return { panHandlers: {} } as const;
+    }
+
     return PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gesture) => {
@@ -971,6 +975,8 @@ function handleLeft() {
   function tryAgain() {
     setSessionNonce((n) => n + 1);
   }
+
+  const cardGestureHandlers = Platform.OS === "web" ? {} : panResponder.panHandlers;
 
   function normalizeRecommendationItems(rawItems: any[]): RecItem[] {
     const docsInOrder: OLDoc[] = Array.isArray(rawItems)
@@ -1466,7 +1472,7 @@ function handleLeft() {
               <View style={styles.cardStage} onLayout={(e) => setCardStageHeight(e.nativeEvent.layout.height)}>
                 <View style={styles.cardWrap}>
                   <Animated.View
-                    {...panResponder.panHandlers}
+                    {...cardGestureHandlers}
                     style={[
                       styles.card,
                       needsCardOffset && styles.cardOffset,
