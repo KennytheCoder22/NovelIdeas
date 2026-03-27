@@ -42,6 +42,9 @@ const DEFAULT_SWIPE_CATEGORIES = {
   movies: true,
   tv: true,
   games: true,
+  youtube: true,
+  anime: true,
+  podcasts: true,
   albums: true,
 };
 
@@ -82,7 +85,16 @@ type RecommendationHistoryBucket = {
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
-  swipeCategories?: { books: boolean; movies: boolean; tv: boolean; games: boolean; albums: boolean };
+  swipeCategories?: {
+    books?: boolean;
+    movies?: boolean;
+    tv?: boolean;
+    games?: boolean;
+    youtube?: boolean;
+    anime?: boolean;
+    podcasts?: boolean;
+    albums?: boolean;
+  };
 };
 
 function resolveDeckFromModule(mod: any, expectedKey: DeckKey, fallbackLabel: string): SwipeDeck {
@@ -277,20 +289,29 @@ function shuffleArray<T>(arr: T[]) {
   return a;
 }
 
-function cardCategoryFromTags(card: any): "books" | "movies" | "tv" | "games" | "albums" {
+function cardCategoryFromTags(card: any): "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts" | "albums" {
   const tags = Array.isArray(card?.tags) ? card.tags : [];
-  const mediaTag = tags.find((t: any) => typeof t === "string" && t.startsWith("media:"));
-  if (!mediaTag) return "books";
-  const v = String(mediaTag).slice("media:".length).toLowerCase();
-  if (v === "tv" || v === "show" || v === "shows") return "tv";
-  if (v === "movie" || v === "movies") return "movies";
-  if (v === "game" || v === "games") return "games";
-  if (v === "album" || v === "albums") return "albums";
+
+  const hasTag = (prefix: string, values: string[]) =>
+    tags.some((t: any) => {
+      if (typeof t !== "string") return false;
+      const lower = t.toLowerCase();
+      return values.some((value) => lower === `${prefix}${value}`);
+    });
+
+  if (hasTag("media:", ["anime"])) return "anime";
+  if (hasTag("media:", ["youtube"])) return "youtube";
+  if (hasTag("media:", ["podcast", "podcasts"])) return "podcasts";
+  if (hasTag("media:", ["tv", "show", "shows"])) return "tv";
+  if (hasTag("media:", ["movie", "movies"])) return "movies";
+  if (hasTag("media:", ["game", "games"])) return "games";
+  if (hasTag("media:", ["album", "albums"])) return "albums";
+
   return "books";
 }
 
 function filterDeckCardsByCategory(deck: SwipeDeck, enabled?: any): SwipeDeck {
-  const cats = enabled ?? DEFAULT_SWIPE_CATEGORIES;
+  const cats = { ...DEFAULT_SWIPE_CATEGORIES, ...(enabled || {}) };
   const cards = Array.isArray((deck as any).cards) ? ((deck as any).cards as any[]) : [];
   const filtered = cards.filter((c) => {
     const cat = cardCategoryFromTags(c);
@@ -298,6 +319,9 @@ function filterDeckCardsByCategory(deck: SwipeDeck, enabled?: any): SwipeDeck {
     if (cat === "movies") return !!cats.movies;
     if (cat === "tv") return !!cats.tv;
     if (cat === "games") return !!cats.games;
+    if (cat === "youtube") return !!cats.youtube;
+    if (cat === "anime") return !!cats.anime;
+    if (cat === "podcasts") return !!cats.podcasts;
     if (cat === "albums") return !!cats.albums;
     return true;
   });
