@@ -1305,6 +1305,23 @@ function runFinalPass(
 
   const sourceCounts: Record<string, number> = {};
 
+const addCandidateIfAllowed = (candidate: Candidate): boolean => {
+  const key = identityKey(candidate);
+  if (seen.has(key)) return false;
+
+  const source = candidate.source || 'unknown';
+  const currentCount = sourceCounts[source] || 0;
+
+  if (source === 'kitsu' && currentCount >= maxKitsu) return false;
+  if (source === 'gcd' && currentCount >= maxGCD) return false;
+  if (selected.length >= targetMax) return false;
+
+  selected.push(candidate);
+  seen.add(key);
+  sourceCounts[source] = currentCount + 1;
+  return true;
+};
+
 const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
   const scored = pool.map((candidate) => {
     const score = scoreForSelection(candidate, lane, profile, queryLadder, activeLadder, tasteProfile, memory);
@@ -1328,27 +1345,49 @@ const addRanked = (pool: Candidate[], activeLadder: QueryLadderTerm[]) => {
         score: Number(entry.score.toFixed(3)),
         visual: isTeenVisualFormatCandidate(entry.candidate),
         source: entry.candidate.source,
+        formatCategory: entry.candidate.formatCategory || 'prose',
       }));
 
       console.log('[NovelIdeas][teenScoringDebug][topCandidates]', top);
     } catch {}
   }
 
+  if (lane === 'teen') {
+    const targetVisualCount = teenVisualFormatFloor(targetMax, queryLadder);
+    let selectedVisualCount = selected.filter((candidate) => isTeenVisualFormatCandidate(candidate)).length;
+    const remainingSlots = Math.max(0, targetMax - selected.length);
+    const remainingVisualNeeded = Math.max(0, targetVisualCount - selectedVisualCount);
+    const reserveVisual = Math.min(remainingSlots, remainingVisualNeeded);
+
+    const visualRanked = ranked.filter((entry) => isTeenVisualFormatCandidate(entry.candidate));
+    const proseRanked = ranked.filter((entry) => !isTeenVisualFormatCandidate(entry.candidate));
+
+    for (const entry of visualRanked) {
+      if (selected.length >= targetMax) break;
+      if (selectedVisualCount >= targetVisualCount) break;
+      if (addCandidateIfAllowed(entry.candidate)) {
+        selectedVisualCount += 1;
+      }
+    }
+
+    const proseCap = Math.max(0, targetMax - reserveVisual);
+    for (const entry of proseRanked) {
+      if (selected.length >= targetMax) break;
+      if (selected.length >= proseCap) break;
+      addCandidateIfAllowed(entry.candidate);
+    }
+
+    for (const entry of ranked) {
+      if (selected.length >= targetMax) break;
+      addCandidateIfAllowed(entry.candidate);
+    }
+
+    return;
+  }
+
   for (const entry of ranked) {
-    const candidate = entry.candidate;
-    const key = identityKey(candidate);
-    if (seen.has(key)) continue;
-
-    const source = candidate.source || 'unknown';
-    const currentCount = sourceCounts[source] || 0;
-
-    if (source === 'kitsu' && currentCount >= maxKitsu) continue;
-    if (source === 'gcd' && currentCount >= maxGCD) continue;
-
-    selected.push(candidate);
-    seen.add(key);
-    sourceCounts[source] = currentCount + 1;
     if (selected.length >= targetMax) break;
+    addCandidateIfAllowed(entry.candidate);
   }
 };
 
