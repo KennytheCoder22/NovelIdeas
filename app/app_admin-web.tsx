@@ -19,6 +19,17 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function slugifyLibraryId(value: string): string {
+  const slug = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/['’"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "default-library";
+}
+
 async function makeTinyLogoDataUrl(dataUrl: string, size = 32): Promise<string> {
   // Create a tiny, QR-friendly logo. Default: 32x32.
   // Prefer JPEG for size unless we detect transparency (alpha), in which case use PNG.
@@ -135,7 +146,7 @@ function syncSchema(cfg: any) {
 
   const themeKeys = ["classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "purple", "slate", "gold_accent"] as const;
 
-const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly ThemeKey[];
+  const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly ThemeKey[];
   const highlightKeys = ["white", "black", "silver", ...themeKeys] as const;
 
   const isThemeKey = (v: any): v is (typeof themeKeys)[number] =>
@@ -165,7 +176,6 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
     delete cfg.theme.mainThemeKey;
   } else {
     cfg.branding.mainTheme = mainTheme;
-    // Back-compat: older code may read branding.theme
     cfg.branding.theme = mainTheme;
     cfg.theme.mainThemeKey = mainTheme;
   }
@@ -268,7 +278,8 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
   const mainPresets: Record<ThemeKey, { accent: string; accentBorder: string; accentTextOn: string }> = {
     dark_blue: { accent: "#0b1e33", accentBorder: "#223b6b", accentTextOn: "#e5efff" },
     classic_blue: { accent: "#2563eb", accentBorder: "#1d4ed8", accentTextOn: "#f9fafb" },
-    sky_blue: { accent: "#38bdf8", accentBorder: "#0284c7", accentTextOn: "#0b1e33" },    forest_green: { accent: "#15803d", accentBorder: "#166534", accentTextOn: "#f9fafb" },
+    sky_blue: { accent: "#38bdf8", accentBorder: "#0284c7", accentTextOn: "#0b1e33" },
+    forest_green: { accent: "#15803d", accentBorder: "#166534", accentTextOn: "#f9fafb" },
     kelly_green: { accent: "#22c55e", accentBorder: "#16a34a", accentTextOn: "#0b1e33" },
     cardinal_red: { accent: "#ef4444", accentBorder: "#dc2626", accentTextOn: "#0b1e33" },
     purple: { accent: "#a855f7", accentBorder: "#7c3aed", accentTextOn: "#0b1e33" },
@@ -278,7 +289,8 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
 
   const highlightPresets: Record<HighlightKey, { highlight: string; highlightBorder: string; highlightTextOn: string }> = {
     classic_blue: { highlight: "#2563eb", highlightBorder: "#1d4ed8", highlightTextOn: "#f9fafb" },
-    sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },    forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
+    sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },
+    forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
     kelly_green: { highlight: "#22c55e", highlightBorder: "#16a34a", highlightTextOn: "#0b1e33" },
     cardinal_red: { highlight: "#ef4444", highlightBorder: "#dc2626", highlightTextOn: "#0b1e33" },
     purple: { highlight: "#a855f7", highlightBorder: "#7c3aed", highlightTextOn: "#0b1e33" },
@@ -303,7 +315,6 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
 
 function downloadJson(filename: string, jsonText: string) {
   try {
-    // Web-only helper.
     const blob = new Blob([jsonText], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -317,7 +328,6 @@ function downloadJson(filename: string, jsonText: string) {
     // ignore
   }
 }
-
 
 function PillButton(props: {
   label: string;
@@ -351,8 +361,6 @@ function PillButton(props: {
   );
 }
 
-
-
 export default function AdminWebScreen() {
   if (Platform.OS !== "web") {
     return (
@@ -374,7 +382,6 @@ export default function AdminWebScreen() {
   const [config, setConfig] = useState<any>(() => {
     const base = deepClone(configFile);
     try {
-      // Web-only: hydrate saved draft if present.
       if (Platform.OS === "web") {
         const saved = localStorage.getItem("novelideas_admin_config");
         if (saved) {
@@ -389,7 +396,6 @@ export default function AdminWebScreen() {
   });
   const [showQr, setShowQr] = useState(true);
 
-  // Persist draft on web so desktop edits survive refresh.
   useEffect(() => {
     if (Platform.OS !== "web") return;
     try {
@@ -406,20 +412,13 @@ export default function AdminWebScreen() {
   const theme = useMemo(() => buildTheme(mainThemeKey, highlightKey), [mainThemeKey, highlightKey]);
 
   const configText = useMemo(() => JSON.stringify(config, null, 2), [config]);
-  const qrPayload = useMemo(() => {
-    // QR payload must stay small; embed ONLY the tiny logo in QR (never the full logoDataUrl).
-    const safe = deepClone(config);
-    // Ensure payload contains canonical keys (enabledDecks + branding.libraryName)
-    // even if the UI is operating on legacy fields.
-    syncSchema(safe);
-    if (safe?.branding) {
-      // Keep tiny logo (if present), remove full-size logo from QR.
-      if ("logoDataUrl" in safe.branding) delete safe.branding.logoDataUrl;
-      if (safe.branding.logoTinyDataUrl == null) delete safe.branding.logoTinyDataUrl;
-    }
-    return JSON.stringify(safe);
-  }, [config]);
-  const qrTooBig = qrPayload.length > 2200;
+
+  const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
+  const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);
+
+  const hostedConfigUrl = useMemo(() => {
+    return `https://novelideas.app/c/${libraryId}`;
+  }, [libraryId]);
 
   const setPath = (path: string[], value: any) => {
     setConfig((prev: any) => {
@@ -436,7 +435,6 @@ export default function AdminWebScreen() {
     });
   };
 
-  // Theme setters: write to canonical keys and keep legacy keys mirrored.
   const setThemeMain = (tk: ThemeKey) => {
     setConfig((prev: any) => {
       const next = deepClone(prev);
@@ -445,12 +443,12 @@ export default function AdminWebScreen() {
 
       if (tk === "dark_blue") {
         delete next.branding.mainTheme;
-        delete next.branding.theme; // back-compat
-        delete next.theme.mainThemeKey; // back-compat
+        delete next.branding.theme;
+        delete next.theme.mainThemeKey;
       } else {
         next.branding.mainTheme = tk;
-        next.branding.theme = tk; // back-compat
-        next.theme.mainThemeKey = tk; // back-compat
+        next.branding.theme = tk;
+        next.theme.mainThemeKey = tk;
       }
 
       syncSchema(next);
@@ -464,7 +462,7 @@ export default function AdminWebScreen() {
       if (next.branding == null) next.branding = {};
       if (next.theme == null) next.theme = {};
       next.branding.highlight = hk;
-      next.theme.highlightKey = hk; // back-compat
+      next.theme.highlightKey = hk;
       syncSchema(next);
       return next;
     });
@@ -476,13 +474,12 @@ export default function AdminWebScreen() {
       if (next.branding == null) next.branding = {};
       if (next.theme == null) next.theme = {};
 
-      // Store only when non-default to keep JSON clean.
       if (t === "white") {
         delete next.branding.titleTextColor;
         delete next.theme.titleTextColor;
       } else {
         next.branding.titleTextColor = t;
-        next.theme.titleTextColor = t; // back-compat
+        next.theme.titleTextColor = t;
       }
 
       syncSchema(next);
@@ -544,12 +541,11 @@ export default function AdminWebScreen() {
           <View>
             <Text style={[styles.h1, { color: theme.text }]}>Desktop Admin</Text>
             <Text style={[styles.sub, { color: theme.subtext }]}>
-              Edit settings on desktop, upload logo, then import on phone via QR (no login).
+              Edit settings on desktop, upload logo, then generate a hosted library QR.
             </Text>
           </View>
 
           <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-            
             <TouchableOpacity
               style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: "transparent" }]}
               onPress={() => {
@@ -562,7 +558,6 @@ export default function AdminWebScreen() {
               <Text style={[styles.btnText, { color: theme.text }]}>Tip $5</Text>
             </TouchableOpacity>
 
-            
             <TouchableOpacity
               style={[styles.btnPrimary, { borderColor: theme.accentBorder, backgroundColor: theme.accent }]}
               onPress={() => {
@@ -579,7 +574,7 @@ export default function AdminWebScreen() {
                 }
 
                 try {
-                  navigator.clipboard?.writeText(qrPayload);
+                  navigator.clipboard?.writeText(hostedConfigUrl);
                   copiedOk = true;
                 } catch {
                   copiedOk = false;
@@ -587,16 +582,16 @@ export default function AdminWebScreen() {
 
                 if (savedOk && copiedOk) {
                   router.replace("/");
-    Alert.alert("Saved", "Saved to this browser and copied settings to clipboard.");
+                  Alert.alert("Saved", "Saved to this browser and copied the hosted library URL.");
                 } else if (savedOk && !copiedOk) {
                   Alert.alert(
                     "Partially saved",
-                    "Saved to this browser, but clipboard copy failed. (Clipboard may be blocked in this browser.)"
+                    "Saved to this browser, but hosted URL copy failed. (Clipboard may be blocked in this browser.)"
                   );
                 } else if (!savedOk && copiedOk) {
-                  Alert.alert("Partially saved", "Copied settings to clipboard, but local browser save failed.");
+                  Alert.alert("Partially saved", "Copied the hosted library URL, but local browser save failed.");
                 } else {
-                  Alert.alert("Save failed", "Could not save or copy settings in this browser.");
+                  Alert.alert("Save failed", "Could not save or copy the hosted library URL in this browser.");
                 }
               }}
             >
@@ -622,13 +617,14 @@ export default function AdminWebScreen() {
             >
               <Text style={[styles.btnText, { color: theme.text }]}>Reset</Text>
             </TouchableOpacity>
-<TouchableOpacity
+
+            <TouchableOpacity
               style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
               onPress={() => downloadJson("NovelIdeas.json", configText)}
             >
               <Text style={[styles.btnText, { color: theme.text }]}>Download JSON</Text>
             </TouchableOpacity>
-</View>
+          </View>
         </View>
 
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
@@ -644,9 +640,16 @@ export default function AdminWebScreen() {
           placeholderTextColor="#7a8aa0"
         />
 
-        <Text style={[styles.label, { color: theme.muted }]}>Library logo</Text>
+        <Text style={[styles.note, { color: theme.subtext, marginTop: 8 }]}>
+          Hosted library ID: <Text style={{ fontWeight: "900", color: theme.text }}>{libraryId}</Text>
+        </Text>
+        <Text style={[styles.note, { color: theme.subtext, marginTop: 4 }]}>
+          Hosted URL: <Text style={{ fontWeight: "900", color: theme.text }}>{hostedConfigUrl}</Text>
+        </Text>
+
+        <Text style={[styles.label, { color: theme.muted, marginTop: 14 }]}>Library logo</Text>
         <Text style={[styles.note, { color: theme.subtext }]}>
-          Upload a logo here on desktop. Phone import via QR comes next.
+          Upload a logo here on desktop. Hosted config loading comes next.
         </Text>
 
         <View style={styles.logoRow}>
@@ -680,7 +683,7 @@ export default function AdminWebScreen() {
             </View>
 
             <Text style={[styles.note, { color: theme.subtext, marginTop: 10 }]}>
-              Tip: once QR import is implemented on phone, you’ll set everything here and then scan once on mobile.
+              This stage only changes the QR target. Route loading and config hydration are separate next steps.
             </Text>
           </View>
         </View>
@@ -760,9 +763,7 @@ export default function AdminWebScreen() {
           ))}
         </View>
 
-        <View style={{ flexDirection: "row", marginTop: 10 }}>
-        </View>
-
+        <View style={{ flexDirection: "row", marginTop: 10 }} />
 
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
@@ -811,7 +812,9 @@ export default function AdminWebScreen() {
         </Text>
         <View style={{ gap: 10 }}>
           {(["books", "movies", "tv", "games", "youtube", "anime", "podcasts"] as SwipeCategoryKey[]).map((k) => {
-            const enabled = (config?.swipe?.categoriesEnabled ?? config?.swipe?.categories) ? !!(config?.swipe?.categoriesEnabled ?? config?.swipe?.categories)[k] : true;
+            const enabled = (config?.swipe?.categoriesEnabled ?? config?.swipe?.categories)
+              ? !!(config?.swipe?.categoriesEnabled ?? config?.swipe?.categories)[k]
+              : true;
             return (
               <View key={k} style={styles.rowBetween}>
                 <Text style={{ color: theme.text, fontWeight: "700" }}>{k.toUpperCase()}</Text>
@@ -857,22 +860,17 @@ export default function AdminWebScreen() {
         </View>
 
         {showQr ? (
-          qrTooBig ? (
-            <View style={{ marginTop: 14 }}>
-              <Text style={[styles.note, { color: theme.danger, textAlign: "center" }]}>
-                QR payload is too large to render. (Tip: the logo is excluded from QR, but other settings may still be large.)
-              </Text>
+          <View style={{ marginTop: 14, alignItems: "center", gap: 10 }}>
+            <View style={{ padding: 14, backgroundColor: "#ffffff", borderRadius: 14 }}>
+              <QRCode value={hostedConfigUrl} size={240} />
             </View>
-          ) : (
-            <View style={{ marginTop: 14, alignItems: "center", gap: 10 }}>
-              <View style={{ padding: 14, backgroundColor: "#ffffff", borderRadius: 14 }}>
-                <QRCode value={qrPayload} size={240} />
-              </View>
-              <Text style={[styles.note, { color: theme.subtext, textAlign: "center" }]}>
-                Phone QR import will be added next. This QR contains the settings payload (logo is intentionally excluded to keep the QR scannable).
-              </Text>
-            </View>
-          )
+            <Text style={[styles.note, { color: theme.subtext, textAlign: "center" }]}>
+              This QR now points to the hosted library URL only. Config loading is not connected yet in this stage.
+            </Text>
+            <Text style={[styles.note, { color: theme.subtext, textAlign: "center" }]}>
+              {hostedConfigUrl}
+            </Text>
+          </View>
         ) : null}
       </View>
     </ScrollView>
