@@ -384,6 +384,16 @@ function StudentView(props: {
             <View style={styles.rowBetween}>
               <TouchableOpacity
                 style={[
+                  styles.smallBtn,
+                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
+                ]}
+                onPress={props.onClear}
+              >
+                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
                   styles.primaryBtn,
                   { backgroundColor: props.theme.accent, borderColor: props.theme.accentBorder },
                 ]}
@@ -392,16 +402,6 @@ function StudentView(props: {
                 <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}>
                   Search
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.smallBtn,
-                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
-                ]}
-                onPress={props.onClear}
-              >
-                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
               </TouchableOpacity>
             </View>
 
