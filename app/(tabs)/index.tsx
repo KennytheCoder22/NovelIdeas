@@ -1829,43 +1829,61 @@ logoDataUrl={logoDataUrl}
 
   // Search mode
   return (
-    <View style={[styles.container, { backgroundColor: theme.appBg }]}>
-      <View style={styles.searchTopRow}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.appBg }}>
+      <View
+        style={{
+          width: "100%",
+          maxWidth: 720,
+          alignSelf: "center",
+          paddingHorizontal: 20,
+          paddingTop: 10,
+          paddingBottom: 10,
+        }}
+      >
         <TouchableOpacity
           style={[
             styles.smallBtn,
-            { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
+            { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120, alignSelf: "flex-start" },
           ]}
           onPress={() => setMode("swipe")}
         >
-          <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
+          <Text style={[styles.smallBtnText, { color: theme.text }]}>← Back</Text>
         </TouchableOpacity>
       </View>
 
-      <StudentView
-        theme={theme}
-        libraryName={libraryName}
-        logoDataUrl={logoDataUrl}
-        enabledDecks={enabledDecks}
-        source={source}
-        deck={deck}
-        setDeck={setDeck}
-        query={query}
-        setQuery={setQuery}
-        loading={loading}
-        results={results}
-        errorMsg={errorMsg}
-        onSearch={runOpenLibrarySearch}
-        onClear={() => {
-          setQuery("");
-          setResults([]);
-          setErrorMsg(null);
-          queryInputRef.current?.focus?.();
+      <ScrollView
+        contentContainerStyle={{
+          alignItems: "center",
+          paddingBottom: 40,
+          paddingHorizontal: 20,
         }}
-        onTitleTap={handleTitleTap}
-        queryInputRef={queryInputRef}
-      />
-    </View>
+        keyboardShouldPersistTaps="handled"
+      >
+        <StudentView
+          theme={theme}
+          libraryName={libraryName}
+          logoDataUrl={logoDataUrl}
+          enabledDecks={enabledDecks}
+          source={source}
+          deck={deck}
+          setDeck={setDeck}
+          query={query}
+          setQuery={setQuery}
+          loading={loading}
+          results={results}
+          errorMsg={errorMsg}
+          onSearch={runOpenLibrarySearch}
+          onClear={() => {
+            setQuery("");
+            setResults([]);
+            setErrorMsg(null);
+            queryInputRef.current?.focus?.();
+          }}
+          onTitleTap={handleTitleTap}
+          queryInputRef={queryInputRef}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
