@@ -10,6 +10,28 @@ const adultDeck: SwipeDeck = {
     shuffle: "true_random_each_session",
   },
   cards: [
+    // Books (20)
+    { isDefault: true, title: "The Night Circus", author: "Erin Morgenstern", genre: "Fantasy", tags: ["audience:adult","age:adult","genre:fantasy","vibe:magical","vibe:atmospheric","theme:love"] },
+    { isDefault: true, title: "The Road", author: "Cormac McCarthy", genre: "Dystopian / Literary", tags: ["audience:adult","age:adult","genre:dystopian","genre:drama","vibe:dark","theme:survival","theme:family"] },
+    { isDefault: true, title: "Gone Girl", author: "Gillian Flynn", genre: "Thriller / Mystery", tags: ["audience:adult","age:adult","genre:thriller","genre:mystery","vibe:dark","theme:marriage","theme:secrets"] },
+    { isDefault: true, title: "The Name of the Wind", author: "Patrick Rothfuss", genre: "Fantasy", tags: ["audience:adult","age:adult","genre:fantasy","vibe:epic","theme:identity","theme:ambition"] },
+    { isDefault: true, title: "Project Hail Mary", author: "Andy Weir", genre: "Science Fiction", tags: ["audience:adult","age:adult","genre:science_fiction","vibe:funny","vibe:thoughtful","theme:survival"] },
+    { isDefault: true, title: "The Silent Patient", author: "Alex Michaelides", genre: "Psychological Thriller", tags: ["audience:adult","age:adult","genre:thriller","genre:mystery","vibe:dark","theme:secrets","theme:psychology"] },
+    { isDefault: true, title: "Circe", author: "Madeline Miller", genre: "Fantasy / Mythology", tags: ["audience:adult","age:adult","genre:fantasy","genre:mythology","vibe:atmospheric","theme:identity","theme:power"] },
+    { isDefault: true, title: "The Seven Husbands of Evelyn Hugo", author: "Taylor Jenkins Reid", genre: "Drama / Historical", tags: ["audience:adult","age:adult","genre:drama","genre:historical_fiction","vibe:emotional","theme:identity","theme:relationships"] },
+    { isDefault: true, title: "Dark Matter", author: "Blake Crouch", genre: "Science Fiction / Thriller", tags: ["audience:adult","age:adult","genre:science_fiction","genre:thriller","vibe:fast","theme:identity","theme:choice"] },
+    { isDefault: true, title: "The Goldfinch", author: "Donna Tartt", genre: "Literary Fiction", tags: ["audience:adult","age:adult","genre:drama","genre:realistic_fiction","vibe:serious","theme:loss","theme:identity"] },
+    { isDefault: true, title: "A Court of Thorns and Roses", author: "Sarah J. Maas", genre: "Fantasy / Romance", tags: ["audience:adult","age:adult","genre:fantasy","genre:romance","vibe:emotional","theme:power","theme:love"] },
+    { isDefault: true, title: "The Girl with the Dragon Tattoo", author: "Stieg Larsson", genre: "Crime / Mystery", tags: ["audience:adult","age:adult","genre:crime","genre:mystery","vibe:dark","theme:justice","theme:secrets"] },
+    { isDefault: true, title: "Station Eleven", author: "Emily St. John Mandel", genre: "Dystopian / Literary", tags: ["audience:adult","age:adult","genre:dystopian","genre:drama","vibe:thoughtful","theme:survival","theme:art"] },
+    { isDefault: true, title: "The Martian", author: "Andy Weir", genre: "Science Fiction", tags: ["audience:adult","age:adult","genre:science_fiction","vibe:funny","vibe:clever","theme:survival"] },
+    { isDefault: true, title: "Big Little Lies", author: "Liane Moriarty", genre: "Drama / Mystery", tags: ["audience:adult","age:adult","genre:drama","genre:mystery","genre:realistic_fiction","vibe:dramatic","theme:secrets","theme:relationships"] },
+    { isDefault: true, title: "The Shadow of the Wind", author: "Carlos Ruiz Zafón", genre: "Mystery / Literary", tags: ["audience:adult","age:adult","genre:mystery","genre:historical_fiction","vibe:atmospheric","theme:secrets","theme:books"] },
+    { isDefault: true, title: "Cloud Atlas", author: "David Mitchell", genre: "Science Fiction / Literary", tags: ["audience:adult","age:adult","genre:science_fiction","genre:drama","vibe:thoughtful","theme:connection","theme:identity"] },
+    { isDefault: true, title: "The House in the Cerulean Sea", author: "TJ Klune", genre: "Fantasy / Cozy", tags: ["audience:adult","age:adult","genre:fantasy","vibe:hopeful","vibe:cozy","theme:belonging","theme:family"] },
+    { isDefault: true, title: "Normal People", author: "Sally Rooney", genre: "Literary / Romance", tags: ["audience:adult","age:adult","genre:drama","genre:romance","genre:realistic_fiction","vibe:emotional","theme:relationships"] },
+    { isDefault: true, title: "The Poppy War", author: "R.F. Kuang", genre: "Fantasy / War", tags: ["audience:adult","age:adult","genre:fantasy","genre:historical_fiction","vibe:dark","theme:power","theme:war"] },
+
     // Movies (30)
     { isDefault: true, title: "The Shawshank Redemption", author: "Castle Rock", genre: "Drama", wikiTitle: "The Shawshank Redemption", tags: ["audience:adult","age:adult","media:movie","genre:drama","genre:realistic_fiction","theme:redemption","vibe:hopeful"] },
     { isDefault: true, title: "The Godfather", author: "Paramount", genre: "Crime / Drama", wikiTitle: "The Godfather", tags: ["audience:adult","age:adult","media:movie","genre:crime","genre:drama","theme:power","theme:family","theme:betrayal"] },
