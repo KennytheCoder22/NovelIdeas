@@ -1382,7 +1382,7 @@ export default function HomeScreen() {
   const queryInputRef = useRef<TextInput | null>(null);
 
   const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});
-  const swipeCategories: SwipeCategories = config?.swipe?.categoriesEnabled ?? DEFAULT_SWIPE_CATEGORIES;
+  const swipeCategories: SwipeCategories = config?.swipe?.categoriesEnabled ?? config?.swipe?.categories ?? DEFAULT_SWIPE_CATEGORIES;
   const libraryName = useMemo(() => (config?.branding?.libraryName ?? config?.library?.name ?? ""), [config]);
 
   

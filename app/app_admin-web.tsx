@@ -811,11 +811,11 @@ export default function AdminWebScreen() {
         </Text>
         <View style={{ gap: 10 }}>
           {(["books", "movies", "tv", "games", "youtube", "anime", "podcasts"] as SwipeCategoryKey[]).map((k) => {
-            const enabled = config?.swipe?.categories ? !!config.swipe.categories[k] : true;
+            const enabled = (config?.swipe?.categoriesEnabled ?? config?.swipe?.categories) ? !!(config?.swipe?.categoriesEnabled ?? config?.swipe?.categories)[k] : true;
             return (
               <View key={k} style={styles.rowBetween}>
                 <Text style={{ color: theme.text, fontWeight: "700" }}>{k.toUpperCase()}</Text>
-                <Switch value={enabled} onValueChange={() => togglePathBool(["swipe", "categories", k])} />
+                <Switch value={enabled} onValueChange={() => togglePathBool(["swipe", "categoriesEnabled", k])} />
               </View>
             );
           })}
