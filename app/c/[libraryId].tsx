@@ -2,6 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 
+export async function generateStaticParams() {
+  return [{ libraryId: "test-library" }];
+}
+
+
 type HostedLibraryConfig = {
   libraryId?: string;
   branding?: {
