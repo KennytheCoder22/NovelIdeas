@@ -1365,6 +1365,9 @@ export default function HomeScreen() {
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [hostedLibraryName, setHostedLibraryName] = useState<string | null>(null);
+  const [hostedMainThemeKey, setHostedMainThemeKey] = useState<ThemeKey | null>(null);
+  const [hostedHighlightKey, setHostedHighlightKey] = useState<HighlightKey | null>(null);
+  const [hostedTitleTextKey, setHostedTitleTextKey] = useState<TitleTextKey | null>(null);
 
   const [config, setConfig] = useState<any>(() => {
     // Desktop web: if the admin-web page saved a draft into localStorage,
@@ -1417,8 +1420,12 @@ const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open
 
   const logoDataUrl: string | null = config?.branding?.logoDataUrl ?? null;
 
+  const effectiveMainThemeKey = hostedMainThemeKey ?? mainThemeKey;
+  const effectiveHighlightKey = hostedHighlightKey ?? highlightKey;
+  const effectiveTitleTextKey = hostedTitleTextKey ?? titleTextKey;
+
   const theme = useMemo(
-    () => buildTheme(mainThemeKey, highlightKey, titleTextKey),
+    () => buildTheme(effectiveMainThemeKey, effectiveHighlightKey, effectiveTitleTextKey),
     [mainThemeKey, highlightKey, titleTextKey]
   );
 
@@ -1447,7 +1454,18 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
           return;
         }
 
-        const nextName = json?.branding?.libraryName;
+        const branding = json?.branding ?? {};
+        const nextName = branding?.libraryName;
+
+        if (typeof branding.mainTheme === "string") {
+          setHostedMainThemeKey(branding.mainTheme as ThemeKey);
+        }
+        if (typeof branding.highlight === "string") {
+          setHostedHighlightKey(branding.highlight as HighlightKey);
+        }
+        if (typeof branding.titleTextColor === "string") {
+          setHostedTitleTextKey(branding.titleTextColor as TitleTextKey);
+        }
         if (typeof nextName === "string" && nextName.trim()) {
           setHostedLibraryName(nextName);
         } else {
