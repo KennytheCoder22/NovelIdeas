@@ -1,9 +1,10 @@
 import {
+  useEffect,
   useMemo,
-    useRef,
+  useRef,
   useState
 } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   Alert,
@@ -87,12 +88,19 @@ function tryLoadDesktopAdminDraft(): any | null {
   }
 }
 
-
+type TitleTextKey = "white" | "black";
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 type SourceKey = "open_library" | "local_collection";
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
 type SwipeCategories = Record<SwipeCategoryKey, boolean>;
+
+type HostedLibraryConfig = {
+  libraryId?: string;
+  branding?: {
+    libraryName?: string;
+  };
+};
 
 const DEFAULT_SWIPE_CATEGORIES: SwipeCategories = {
   books: true,
@@ -299,7 +307,7 @@ function StudentView(props: {
         ]}
       >
         <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Loaded config</Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
+        <Text style={[styles.text, { color: props.theme.subtext }]}> 
           Library:{" "}
           <Text style={[styles.bold, { color: props.theme.text }]}>{props.libraryName}</Text>
         </Text>
@@ -349,7 +357,7 @@ function StudentView(props: {
 
         <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
 
-        <Text style={[styles.sectionTitle, { color: props.theme.text }]}>
+        <Text style={[styles.sectionTitle, { color: props.theme.text }]}> 
           {props.source === "open_library"
             ? "Search Open Library"
             : "Search This Library (coming next)"}
@@ -399,7 +407,7 @@ function StudentView(props: {
                 ]}
                 onPress={props.onSearch}
               >
-                <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}>
+                <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}> 
                   Search
                 </Text>
               </TouchableOpacity>
@@ -459,11 +467,11 @@ function StudentView(props: {
                         )}
 
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.resultTitle, { color: props.theme.text }]}>
+                          <Text style={[styles.resultTitle, { color: props.theme.text }]}> 
                             {title}
                             <Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text>
                           </Text>
-                          <Text style={[styles.resultAuthor, { color: props.theme.subtext }]}>
+                          <Text style={[styles.resultAuthor, { color: props.theme.subtext }]}> 
                             {author}
                           </Text>
 
@@ -474,7 +482,7 @@ function StudentView(props: {
                                 Alert.alert("Saved (v1)", `Added "${title}" to your list (coming next).`)
                               }
                             >
-                              <Text style={[styles.tinyBtnText, { color: props.theme.text }]}>
+                              <Text style={[styles.tinyBtnText, { color: props.theme.text }]}> 
                                 Add to list
                               </Text>
                             </TouchableOpacity>
@@ -483,7 +491,7 @@ function StudentView(props: {
                               style={[styles.tinyBtn, { borderColor: props.theme.accentBorder }]}
                               onPress={() => Alert.alert("Feedback (v1)", "Ratings + DNF reasons next.")}
                             >
-                              <Text style={[styles.tinyBtnText, { color: props.theme.text }]}>
+                              <Text style={[styles.tinyBtnText, { color: props.theme.text }]}> 
                                 Feedback
                               </Text>
                             </TouchableOpacity>
@@ -498,7 +506,7 @@ function StudentView(props: {
           </>
         ) : (
           <>
-            <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+            <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
               This mode will recommend only books that this library actually owns. Upload/import tools are coming next.
               For now, switch Source to Open Library if you want instant recommendations without uploading anything.
             </Text>
@@ -719,7 +727,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         </View>
         </View>
 
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           Changes you make here apply immediately in the app. Use{" "}
           <Text style={[styles.bold, { color: props.theme.text }]}>Save Settings</Text> to download an updated{" "}
           <Text style={[styles.bold, { color: props.theme.text }]}>NovelIdeas.json</Text> file.
@@ -742,7 +750,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         />
 
         <Text style={[styles.label, { color: props.theme.muted }]}>Library logo</Text>
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           Optional. This logo appears in the top corner of the app.
         </Text>
 
@@ -806,7 +814,7 @@ setMainThemeKey: (t: ThemeKey) => void;
 
 
             {Platform.OS !== "web" ? (
-              <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 8 }]}>
+              <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 8 }]}> 
                 Logo upload is easiest on web. (Mobile upload can come later.)
               </Text>
             ) : null}
@@ -814,7 +822,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         </View>
 
         <Text style={[styles.label, { color: props.theme.muted }]}>Main color</Text>
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           Used for primary buttons and selected items.
         </Text>
 
@@ -859,7 +867,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         </View>
 
         <Text style={[styles.label, { color: props.theme.muted }]}>Highlight color</Text>
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           Used for borders, the book icon, and the title divider.
         </Text>
 
@@ -956,7 +964,7 @@ setMainThemeKey: (t: ThemeKey) => void;
           </TouchableOpacity>
         </View>
 
-<Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+<Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           All themes are designed for readability and accessibility.
         </Text>
 
@@ -965,7 +973,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         {/* Recommendation source */}
 <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Recommendation Source</Text>
 
-<Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+<Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
   Choose where recommendations come from. Open Library is the privacy-friendly default.
 </Text>
 
@@ -1005,7 +1013,7 @@ setMainThemeKey: (t: ThemeKey) => void;
 
 {props.source === "local_collection" ? (
   <View style={{ marginTop: 10, gap: 10 }}>
-    <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+    <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
       This mode recommends only titles your library has uploaded. Use the button below to upload or replace your collection.
     </Text>
 
@@ -1025,7 +1033,7 @@ setMainThemeKey: (t: ThemeKey) => void;
 
         {/* Decks */}
         <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Decks</Text>
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           Enabled decks: <Text style={[styles.bold, { color: props.theme.text }]}>{enabledList || "None"}</Text>
         </Text>
 
@@ -1039,7 +1047,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Swipe card types</Text>
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           These control what appears in the swipe deck. Recommendations remain books-only.
         </Text>
 
@@ -1069,7 +1077,7 @@ setMainThemeKey: (t: ThemeKey) => void;
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           If this downloads a file, replace your project’s{" "}
           <Text style={[styles.bold, { color: props.theme.text }]}>NovelIdeas.json</Text> with the downloaded one.
         </Text>
@@ -1078,7 +1086,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         {/* ADMIN LOCK */}
         <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Admin Lock</Text>
 
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           If enabled, a 6-digit PIN is required to open Admin (via the 7 taps). Normal app use never requires a PIN.
         </Text>
 
@@ -1136,7 +1144,7 @@ setMainThemeKey: (t: ThemeKey) => void;
           </TouchableOpacity>
 
           {props.adminPinEnabled && props.adminPin.length !== 6 ? (
-            <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 2 }]}>
+            <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 2 }]}> 
               PIN must be exactly 6 digits to take effect.
             </Text>
           ) : (
@@ -1148,7 +1156,7 @@ setMainThemeKey: (t: ThemeKey) => void;
         <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Share this library</Text>
-        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}> 
           This QR code is specific to this library. Scanning it can open NovelIdeas and load this library (import flow coming next).
         </Text>
 
@@ -1206,19 +1214,19 @@ setMainThemeKey: (t: ThemeKey) => void;
                 />
               </View>
 
-              <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 10, textAlign: "center" }]}>
+              <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 10, textAlign: "center" }]}> 
                 Encoded link:
               </Text>
-              <Text selectable style={[styles.jsonText, { color: props.theme.subtext, textAlign: "center" }]}>
+              <Text selectable style={[styles.jsonText, { color: props.theme.subtext, textAlign: "center" }]}> 
                 {`https://novelideas.com/c/${props.libraryId}`}
               </Text>
 
-              <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 10, textAlign: "center" }]}>
+              <Text style={[styles.noteSmall, { color: props.theme.subtext, marginTop: 10, textAlign: "center" }]}> 
                 Note: this is a hosted-config link (Option C). The app-side auto-import will be implemented next.
               </Text>
             </>
           ) : (
-            <Text style={[styles.noteSmall, { color: props.theme.subtext, textAlign: "center" }]}>
+            <Text style={[styles.noteSmall, { color: props.theme.subtext, textAlign: "center" }]}> 
               Set a Library ID (or generate one) to create a QR code.
             </Text>
           )}
@@ -1233,10 +1241,10 @@ setMainThemeKey: (t: ThemeKey) => void;
       </View>
         {/* Desktop Admin & Import */}
         <View style={{ marginTop: 18 }}>
-          <Text style={[styles.sectionTitle, { color: props.theme.text }]}>
+          <Text style={[styles.sectionTitle, { color: props.theme.text }]}> 
             Desktop Admin & Import
           </Text>
-          <Text style={[styles.note, { color: props.theme.subtext }]}>
+          <Text style={[styles.note, { color: props.theme.subtext }]}> 
             Use Desktop Admin on the web for logo upload and full editing. Import settings to this phone by pasting JSON.
           </Text>
 
@@ -1254,7 +1262,7 @@ setMainThemeKey: (t: ThemeKey) => void;
                 }
               }}
             >
-              <Text style={[styles.smallBtnText, { color: props.theme.text }]}>
+              <Text style={[styles.smallBtnText, { color: props.theme.text }]}> 
                 Open Desktop Admin
               </Text>
             </TouchableOpacity>
@@ -1265,7 +1273,7 @@ setMainThemeKey: (t: ThemeKey) => void;
                 setImportModalVisible(true);
               }}
             >
-              <Text style={[styles.smallBtnText, { color: props.theme.text }]}>
+              <Text style={[styles.smallBtnText, { color: props.theme.text }]}> 
                 Import (Paste JSON)
               </Text>
             </TouchableOpacity>
@@ -1346,6 +1354,9 @@ setMainThemeKey: (t: ThemeKey) => void;
 }
 
 export default function HomeScreen() {
+  const { libraryId: hostedLibraryIdParam } = useLocalSearchParams<{ libraryId?: string }>();
+  const hostedLibraryId = String(hostedLibraryIdParam || "").trim();
+
   const [mode, setMode] = useState<"swipe" | "search">("swipe");
 
   const [tapCount, setTapCount] = useState(0);
@@ -1353,6 +1364,7 @@ export default function HomeScreen() {
   const [adminPinEntry, setAdminPinEntry] = useState("");
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const [hostedLibraryName, setHostedLibraryName] = useState<string | null>(null);
 
   const [config, setConfig] = useState<any>(() => {
     // Desktop web: if the admin-web page saved a draft into localStorage,
@@ -1384,6 +1396,7 @@ export default function HomeScreen() {
   const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});
   const swipeCategories: SwipeCategories = config?.swipe?.categoriesEnabled ?? config?.swipe?.categories ?? DEFAULT_SWIPE_CATEGORIES;
   const libraryName = useMemo(() => (config?.branding?.libraryName ?? config?.library?.name ?? ""), [config]);
+  const displayLibraryName = useMemo(() => hostedLibraryName || libraryName, [hostedLibraryName, libraryName]);
 
   
   const libraryId = useMemo(() => config?.library?.id ?? "", [config]);
@@ -1415,6 +1428,42 @@ const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadHostedConfig() {
+      if (!hostedLibraryId) {
+        setHostedLibraryName(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/config/${encodeURIComponent(hostedLibraryId)}`);
+        const json = (await res.json()) as HostedLibraryConfig;
+
+        if (cancelled || !res.ok) {
+          if (!cancelled) setHostedLibraryName(null);
+          return;
+        }
+
+        const nextName = json?.branding?.libraryName;
+        if (typeof nextName === "string" && nextName.trim()) {
+          setHostedLibraryName(nextName);
+        } else {
+          setHostedLibraryName(null);
+        }
+      } catch {
+        if (!cancelled) setHostedLibraryName(null);
+      }
+    }
+
+    loadHostedConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hostedLibraryId]);
 
   // Desktop web: whenever the Home screen regains focus, re-hydrate from the
   // Desktop Admin draft if it exists. This is what makes toggles + library name
@@ -1453,7 +1502,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
           >
             <Text style={[styles.sectionTitle, { color: theme.text, textAlign: "center" }]}>Enter Admin PIN</Text>
 
-            <Text style={[styles.noteSmall, { color: theme.subtext, textAlign: "center", marginTop: 8 }]}>
+            <Text style={[styles.noteSmall, { color: theme.subtext, textAlign: "center", marginTop: 8 }]}> 
               Admin is locked. Enter the 6-digit PIN to continue.
             </Text>
 
@@ -1482,7 +1531,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
             />
 
             {adminPinError ? (
-              <Text style={[styles.noteSmall, { color: theme.danger, textAlign: "center", marginTop: 8 }]}>
+              <Text style={[styles.noteSmall, { color: theme.danger, textAlign: "center", marginTop: 8 }]}> 
                 {adminPinError}
               </Text>
             ) : null}
@@ -1716,7 +1765,7 @@ if (adminPinReady) {
       <View style={[styles.container, { backgroundColor: theme.appBg }]}>
         <AdminView
           theme={theme}
-          libraryName={libraryName}
+          libraryName={displayLibraryName}
                     libraryId={libraryId}
 logoDataUrl={logoDataUrl}
           setConfig={setConfig}
@@ -1777,7 +1826,7 @@ logoDataUrl={logoDataUrl}
             >
               <View style={styles.titleRow}>
 
-                {(((libraryName) || "").trim().length > 0) ? (
+                {(((displayLibraryName) || "").trim().length > 0) ? (
 
                   <Text
 
@@ -1789,7 +1838,7 @@ logoDataUrl={logoDataUrl}
 
                   >
 
-                    {libraryName}
+                    {displayLibraryName}
 
                   </Text>
 
@@ -1861,7 +1910,7 @@ logoDataUrl={logoDataUrl}
       >
         <StudentView
           theme={theme}
-          libraryName={libraryName}
+          libraryName={displayLibraryName}
           logoDataUrl={logoDataUrl}
           enabledDecks={enabledDecks}
           source={source}
@@ -1930,6 +1979,18 @@ const styles = StyleSheet.create({
   hint: { marginTop: 12, fontSize: 12 },
   noteSmall: { marginTop: 10, fontSize: 12 },
   label: { marginTop: 12, marginBottom: 6, fontWeight: "700" },
+  note: { marginTop: 10, fontSize: 12, lineHeight: 18 },
+  btn: {
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 90,
+  },
+  btnText: { fontWeight: "800" },
+  safe: { flex: 1 },
 
   privacyNote: { marginTop: 8, fontSize: 12, lineHeight: 16 },
 
