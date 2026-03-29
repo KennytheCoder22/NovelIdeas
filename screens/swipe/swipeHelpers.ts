@@ -19,7 +19,6 @@ function normalizeTags(tags: string[]): string[] {
 
 import type { SwipeDeck } from "../../data/swipeDecks/types";
 import type { TagCounts } from "./openLibraryFromTags";
-import { openLibrarySearch } from "./openLibraryFromTags";
 import { normalizeTag } from "../../data/tagNormalizationMap";
 
 // Many parts of the app rely on structured tags like "genre:adventure".
@@ -213,6 +212,8 @@ export function hasAnyLikedTags(counts: TagCounts) {
 }
 
 // Internal search function used by openLibrarySearchWithTimeout.
+// This file intentionally uses its own local search implementation.
+// Do not import another openLibrarySearch here, or it will collide with this declaration.
 // Despite the name, this currently queries Google Books, then normalizes into an OL-style { docs: [...] } shape.
 async function openLibrarySearch(query: string, limit: number): Promise<{ docs: OLDoc[] }> {
   const apiKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
