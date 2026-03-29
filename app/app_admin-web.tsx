@@ -287,19 +287,20 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
     gold_accent: { accent: "#fbbf24", accentBorder: "#f59e0b", accentTextOn: "#1f2933" },
   };
 
-  const highlightPresets: Record<HighlightKey, { highlight: string; highlightBorder: string; highlightTextOn: string }> = {
-    classic_blue: { highlight: "#2563eb", highlightBorder: "#1d4ed8", highlightTextOn: "#f9fafb" },
-    sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },
-    forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
-    kelly_green: { highlight: "#22c55e", highlightBorder: "#16a34a", highlightTextOn: "#0b1e33" },
-    cardinal_red: { highlight: "#ef4444", highlightBorder: "#dc2626", highlightTextOn: "#0b1e33" },
-    purple: { highlight: "#a855f7", highlightBorder: "#7c3aed", highlightTextOn: "#0b1e33" },
-    slate: { highlight: "#64748b", highlightBorder: "#475569", highlightTextOn: "#f9fafb" },
-    gold_accent: { highlight: "#fbbf24", highlightBorder: "#f59e0b", highlightTextOn: "#1f2933" },
-    white: { highlight: "#ffffff", highlightBorder: "#e5e7eb", highlightTextOn: "#0b1e33" },
-    black: { highlight: "#111827", highlightBorder: "#0b1220", highlightTextOn: "#f9fafb" },
-    silver: { highlight: "#d1d5db", highlightBorder: "#9ca3af", highlightTextOn: "#0b1e33" },
-  };
+ const highlightPresets: Record<HighlightKey, { highlight: string; highlightBorder: string; highlightTextOn: string }> = {
+  dark_blue: { highlight: "#0b1e33", highlightBorder: "#223b6b", highlightTextOn: "#e5efff" },
+  classic_blue: { highlight: "#2563eb", highlightBorder: "#1d4ed8", highlightTextOn: "#f9fafb" },
+  sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },
+  forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
+  kelly_green: { highlight: "#22c55e", highlightBorder: "#16a34a", highlightTextOn: "#0b1e33" },
+  cardinal_red: { highlight: "#ef4444", highlightBorder: "#dc2626", highlightTextOn: "#0b1e33" },
+  purple: { highlight: "#a855f7", highlightBorder: "#7c3aed", highlightTextOn: "#0b1e33" },
+  slate: { highlight: "#64748b", highlightBorder: "#475569", highlightTextOn: "#f9fafb" },
+  gold_accent: { highlight: "#fbbf24", highlightBorder: "#f59e0b", highlightTextOn: "#1f2933" },
+  white: { highlight: "#ffffff", highlightBorder: "#e5e7eb", highlightTextOn: "#0b1e33" },
+  black: { highlight: "#111827", highlightBorder: "#0b1220", highlightTextOn: "#f9fafb" },
+  silver: { highlight: "#d1d5db", highlightBorder: "#9ca3af", highlightTextOn: "#0b1e33" },
+};
 
   const main = mainPresets[mainThemeKey];
   const hi = highlightPresets[highlightKey];
