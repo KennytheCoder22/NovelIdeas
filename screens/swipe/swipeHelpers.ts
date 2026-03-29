@@ -71,6 +71,8 @@ export type OLDoc = {
   author_name?: string[];
   first_publish_year?: number;
   cover_i?: number;
+  cover_url?: string;
+  subject?: string[];
 };
 
 export type FallbackBook = {
@@ -262,7 +264,8 @@ async function openLibrarySearch(query: string, limit: number): Promise<{ docs: 
       author_name,
       first_publish_year,
       subject: categories,
-      cover_i: thumb,
+      cover_i: undefined,
+      cover_url: thumb,
     };
   });
 
