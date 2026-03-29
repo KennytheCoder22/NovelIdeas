@@ -42,8 +42,8 @@ export type RecommendationDoc = {
   ebook_access?: string;
 };
 
-export type RecommendationItem = {
-  kind: "open_library"; // legacy UI expects this shape
+type RecommendationItem = {
+  kind: "open_library" | "gcd";
   doc: RecommendationDoc;
 };
 
