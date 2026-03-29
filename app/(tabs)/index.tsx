@@ -1461,14 +1461,15 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         }
 
         const branding = json?.branding ?? {};
-        const nextName = branding?.libraryName;
+const nextName = branding?.libraryName;
 
-        if (typeof branding.mainTheme === "string") {
-          setHostedMainThemeKey(branding.mainTheme as ThemeKey);
-        }
-        if (typeof branding.highlight === "string") {
-          setHostedHighlightKey(branding.highlight as HighlightKey);
-        }
+if (branding && typeof (branding as any).mainTheme === "string") {
+  setHostedMainThemeKey((branding as any).mainTheme as ThemeKey);
+}
+
+if (branding && typeof (branding as any).highlight === "string") {
+  setHostedHighlightKey((branding as any).highlight as HighlightKey);
+}
         if (typeof branding.titleTextColor === "string") {
           setHostedTitleTextKey(branding.titleTextColor as TitleTextKey);
         }
