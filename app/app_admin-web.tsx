@@ -315,22 +315,6 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
   };
 }
 
-function downloadJson(filename: string, jsonText: string) {
-  try {
-    const blob = new Blob([jsonText], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  } catch {
-    // ignore
-  }
-}
-
 function PillButton(props: {
   label: string;
   selected: boolean;
@@ -620,12 +604,6 @@ export default function AdminWebScreen() {
               <Text style={[styles.btnText, { color: theme.text }]}>Reset</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
-              onPress={() => downloadJson("NovelIdeas.json", configText)}
-            >
-              <Text style={[styles.btnText, { color: theme.text }]}>Download JSON</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -830,8 +808,7 @@ export default function AdminWebScreen() {
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Lock</Text>
         <Text style={{ marginTop: 6, fontSize: 12 }}>
-          When a valid 6-digit PIN is enabled, the Customize button on the home page is hidden.
-          To reopen Admin, click the library name 7 times on the home page, then enter the PIN.
+          When a valid 6-digit PIN is enabled, the Customize button will require the PIN before opening Admin.
         </Text>
         <View style={styles.rowBetween}>
           <Text style={{ color: theme.text, fontWeight: "700" }}>Enable PIN</Text>
