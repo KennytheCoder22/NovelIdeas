@@ -37,7 +37,7 @@ async function makeTinyLogoDataUrl(dataUrl: string, size = 32): Promise<string> 
     try {
       if (typeof document === "undefined") return resolve(dataUrl);
 
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         try {
           const canvas = document.createElement("canvas");
