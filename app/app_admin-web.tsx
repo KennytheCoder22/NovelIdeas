@@ -44,10 +44,10 @@ async function makeTinyLogoDataUrl(dataUrl: string, size = 32): Promise<string> 
           canvas.width = size;
           canvas.height = size;
 
-          const ctx = canvas.getContext("2d", { willReadFrequently: true } as any);
-          if (!ctx) return resolve(dataUrl);
+          const ctx = canvas.getContext("2d", { willReadFrequently: true } as any) as CanvasRenderingContext2D | null;
+if (!ctx) return resolve(dataUrl);
 
-          ctx.clearRect(0, 0, size, size);
+ctx.clearRect(0, 0, size, size);
 
           // Cover-fit (center crop) into a square.
           const sw = img.width;
