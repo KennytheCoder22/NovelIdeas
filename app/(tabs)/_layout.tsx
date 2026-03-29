@@ -58,6 +58,7 @@ export default function TabLayout() {
   const tapCountRef = useRef(0);
   const lastTapAtRef = useRef(0);
 
+  // NOTE: This must stay aligned with index.tsx (7 taps = admin access)
   const onTitleTap = useCallback(() => {
     const now = Date.now();
 

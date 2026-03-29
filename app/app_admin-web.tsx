@@ -302,6 +302,7 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
   silver: { highlight: "#d1d5db", highlightBorder: "#9ca3af", highlightTextOn: "#0b1e33" },
 };
 
+
   const main = mainPresets[mainThemeKey];
   const hi = highlightPresets[highlightKey];
 
@@ -828,6 +829,10 @@ export default function AdminWebScreen() {
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Lock</Text>
+        <Text style={{ marginTop: 6, fontSize: 12 }}>
+          When a valid 6-digit PIN is enabled, the Customize button on the home page is hidden.
+          To reopen Admin, click the library name 7 times on the home page, then enter the PIN.
+        </Text>
         <View style={styles.rowBetween}>
           <Text style={{ color: theme.text, fontWeight: "700" }}>Enable PIN</Text>
           <Switch value={adminPinEnabled} onValueChange={() => togglePathBool(["admin", "pinEnabled"])} />
