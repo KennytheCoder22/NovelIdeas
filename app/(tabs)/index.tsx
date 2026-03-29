@@ -297,16 +297,7 @@ function StudentView(props: {
           <Text style={[styles.subtitle, { color: props.theme.muted }]}>Book Finder</Text>
         </TouchableOpacity>
 
-        <View style={styles.headerRight}>
-              {showCustomizeButton ? (
-                <TouchableOpacity
-                  onPress={() => router.push("/app_admin-web")}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 8 }}
-                >
-                  <Text style={{ fontWeight: "800" }}>Customize</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+        <View style={styles.headerRight} />
       </View>
 
       <View
@@ -534,7 +525,7 @@ function StudentView(props: {
           </>
         )}
 
-        <Text style={[styles.hint, { color: props.theme.muted }]}>{adminPinReady ? "Tap the title 7 times to open Admin." : "Use Customize to edit settings."}</Text>
+        <Text style={[styles.hint, { color: props.theme.muted }]}>Tap the title 7 times to open Admin.</Text>
       </View>
     </View>
   );
@@ -1443,7 +1434,6 @@ const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
   const adminPinReady: boolean = adminPinEnabled && /^\d{6}$/.test(adminPin);
-  const showCustomizeButton = Platform.OS === "web" && !adminPinReady;
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
@@ -1901,22 +1891,15 @@ logoDataUrl={logoDataUrl}
               <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
             </TouchableOpacity>
 
-            <View style={styles.headerRight}>
-              {showCustomizeButton ? (
-                <TouchableOpacity
-                  onPress={() => router.push("/app_admin-web")}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 8 }}
-                >
-                  <Text style={{ fontWeight: "800" }}>Customize</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+            <View style={styles.headerRight} />
           </View>
 </View>
 
         <SwipeDeckScreen
           swipeCategories={swipeCategories}
           enabledDecks={enabledDecks}
+          showCustomizeButton={showCustomizeButton}
+          onOpenCustomize={() => router.push("/app_admin-web")}
           onOpenSearch={() => {
             setMode("search");
             setTimeout(() => queryInputRef.current?.focus?.(), 50);
