@@ -5,6 +5,8 @@
 
 export type TagCounts = Record<string, number>;
 
+export const FALLBACK_COVER_URL = "https://via.placeholder.com/300x450?text=No+Cover";
+
 // Medium words (movie/game/etc.) are noise for "vibe" matching and often pull in
 // non-story trade/reference results. We strip these from the final keyword set.
 export const MEDIUM_TOKEN_STOP = new Set<string>([
@@ -185,7 +187,17 @@ export async function googleBooksSearch(query: string, limit = 12) {
 }
 
 export function coverUrlFromCoverId(coverId?: number | string, size: "S" | "M" | "L" = "M") {
-  if (!coverId) return null;
-  if (typeof coverId === "string") return coverId; // Google Books thumbnail URL
-  return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+  if (typeof coverId === "string") {
+    const trimmed = coverId.trim();
+    if (!trimmed) return FALLBACK_COVER_URL;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/^http:\/\//, "https://");
+    if (/^\d+$/.test(trimmed)) return `https://covers.openlibrary.org/b/id/${trimmed}-${size}.jpg`;
+    return FALLBACK_COVER_URL;
+  }
+
+  if (typeof coverId === "number" && Number.isFinite(coverId) && coverId > 0) {
+    return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+  }
+
+  return FALLBACK_COVER_URL;
 }

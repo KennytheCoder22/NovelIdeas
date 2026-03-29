@@ -118,7 +118,7 @@ type OLDoc = {
   title?: string;
   author_name?: string[];
   first_publish_year?: number;
-  cover_i?: number;
+  cover_i?: number | string;
 };
 
 function deckLabel(k: DeckKey) {
@@ -170,9 +170,22 @@ function titleTextLabel(t: TitleTextKey) {
   return t === "black" ? "Black" : "White";
 }
 
-function coverUrlFromCoverId(coverId?: number, size: "S" | "M" | "L" = "M") {
-  if (!coverId) return null;
-  return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+const FALLBACK_COVER_URL = "https://via.placeholder.com/300x450?text=No+Cover";
+
+function coverUrlFromCoverId(coverId?: number | string, size: "S" | "M" | "L" = "M") {
+  if (typeof coverId === "string") {
+    const trimmed = coverId.trim();
+    if (!trimmed) return FALLBACK_COVER_URL;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed.replace(/^http:\/\//, "https://");
+    if (/^\d+$/.test(trimmed)) return `https://covers.openlibrary.org/b/id/${trimmed}-${size}.jpg`;
+    return FALLBACK_COVER_URL;
+  }
+
+  if (typeof coverId === "number" && Number.isFinite(coverId) && coverId > 0) {
+    return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+  }
+
+  return FALLBACK_COVER_URL;
 }
 
 function showSourceInfo() {
@@ -446,25 +459,7 @@ function StudentView(props: {
                           },
                         ]}
                       >
-                        {cover ? (
-                          <Image source={{ uri: cover }} style={styles.cover} resizeMode="cover" />
-                        ) : (
-                          <View
-                            style={[
-                              styles.coverPlaceholder,
-                              { borderColor: props.theme.resultBorder },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.coverPlaceholderText,
-                                { color: props.theme.muted },
-                              ]}
-                            >
-                              No cover
-                            </Text>
-                          </View>
-                        )}
+                        <Image source={{ uri: cover }} style={styles.cover} resizeMode="cover" />
 
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.resultTitle, { color: props.theme.text }]}> 

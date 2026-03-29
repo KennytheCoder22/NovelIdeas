@@ -6,6 +6,8 @@
 
 export type TagCounts = Record<string, number>;
 
+export const FALLBACK_COVER_URL = "https://via.placeholder.com/300x450?text=No+Cover";
+
 // Medium words (movie/game/etc.) are noise for book matching and often pull in
 // non-story trade/reference results. We strip these from the final keyword set.
 const MEDIUM_TOKEN_STOP = new Set<string>([
@@ -745,13 +747,26 @@ export function coverUrlFromCoverId(
   coverId?: number | string,
   size: "S" | "M" | "L" = "M"
 ) {
-  if (!coverId) return null;
+  if (typeof coverId === "string") {
+    const trimmed = coverId.trim();
+    if (!trimmed) return FALLBACK_COVER_URL;
 
-  if (typeof coverId === "string" && /^https?:\/\//i.test(coverId)) {
-    return coverId.replace(/^http:\/\//, "https://");
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed.replace(/^http:\/\//, "https://");
+    }
+
+    if (/^\d+$/.test(trimmed)) {
+      return `https://covers.openlibrary.org/b/id/${trimmed}-${size}.jpg`;
+    }
+
+    return FALLBACK_COVER_URL;
   }
 
-  return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+  if (typeof coverId === "number" && Number.isFinite(coverId) && coverId > 0) {
+    return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
+  }
+
+  return FALLBACK_COVER_URL;
 }
 
 // Backward-compatible alias: older code imported openLibrarySearch from this file.

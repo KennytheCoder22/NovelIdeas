@@ -23,7 +23,7 @@ import * as k2DeckMod from "../data/swipeDecks/k2";
 import * as deck36Mod from "../data/swipeDecks/36";
 import msHsDeck from "../data/swipeDecks/ms_hs";
 import adultDeck from "../data/swipeDecks/adult";
-import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
+import { coverUrlFromCoverId, FALLBACK_COVER_URL, type TagCounts } from "./swipe/openLibraryFromTags";
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
@@ -813,7 +813,7 @@ export default function SwipeDeckScreen(props: Props) {
     if (!currentCard) return undefined;
     const explicitImage = (currentCard as any)?.imageUri as string | undefined;
     if (explicitImage && explicitImage.trim().length > 0) return explicitImage;
-    return swipeCoverCache[currentCardKey];
+    return swipeCoverCache[currentCardKey] || FALLBACK_COVER_URL;
   }, [currentCard, currentCardKey, swipeCoverCache]);
 
   useEffect(() => {
@@ -1393,22 +1393,9 @@ function handleLeft() {
                   <View style={styles.recCard}>
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
-                        (() => {
-                          const cover = coverUrlFromCoverId(currentRec.doc.cover_i, "L");
-                          return cover ? (
-                            <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
-                          ) : (
-                            <View style={styles.bigCoverPlaceholder}>
-                              <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
-                            </View>
-                          );
-                        })()
-                      ) : recCoverCache[currentRecKey] ? (
-                        <Image source={{ uri: recCoverCache[currentRecKey] }} style={styles.bigCover} resizeMode="contain" />
+                        <Image source={{ uri: coverUrlFromCoverId(currentRec.doc.cover_i, "L") }} style={styles.bigCover} resizeMode="contain" />
                       ) : (
-                        <View style={styles.bigCoverPlaceholder}>
-                          <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
-                        </View>
+                        <Image source={{ uri: recCoverCache[currentRecKey] || FALLBACK_COVER_URL }} style={styles.bigCover} resizeMode="contain" />
                       )}
                     </View>
 

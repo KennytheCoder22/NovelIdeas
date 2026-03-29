@@ -1,4 +1,5 @@
 import type { RecommendationDoc } from './types';
+import { coverUrlFromCoverId } from '../swipe/openLibraryCore';
 
 export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'gcd';
 
@@ -154,16 +155,23 @@ function extractQueryTerms(queryText: any): string[] {
   return Array.from(new Set([...subjectMatches, ...freeTextTerms]));
 }
 
-function hasCover(rawDoc: any): boolean {
-  if (rawDoc?.cover_i) return true;
+function resolveRawCoverId(rawDoc: any): number | string | undefined {
   const imageLinks = rawDoc?.imageLinks ?? rawDoc?.volumeInfo?.imageLinks;
-  return Boolean(
-    imageLinks?.thumbnail ||
-      imageLinks?.smallThumbnail ||
-      imageLinks?.small ||
-      imageLinks?.medium ||
-      imageLinks?.large
+
+  return (
+    rawDoc?.cover_i ??
+    imageLinks?.thumbnail ??
+    imageLinks?.smallThumbnail ??
+    imageLinks?.small ??
+    imageLinks?.medium ??
+    imageLinks?.large ??
+    undefined
   );
+}
+
+function hasCover(rawDoc: any): boolean {
+  const resolved = coverUrlFromCoverId(resolveRawCoverId(rawDoc));
+  return typeof resolved === 'string' && resolved.trim().length > 0;
 }
 
 function detectFormatCategory(
@@ -210,6 +218,11 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
   const uniqueSubjects = Array.from(new Set(subjects.map((item) => item.trim()).filter(Boolean)));
   const formatCategory = detectFormatCategory(rawDoc, source, uniqueSubjects);
   const ratings = getRatings(rawDoc);
+  const normalizedCoverId = resolveRawCoverId(rawDoc);
+  const normalizedRawDoc: RecommendationDoc = {
+    ...(rawDoc as any),
+    cover_i: normalizedCoverId,
+  };
 
   return {
     id: String((rawDoc as any)?.id || (rawDoc as any)?.key || `${source}:${title}:${authors[0] || 'unknown'}`),
@@ -248,7 +261,7 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     publisher: getPublisher(rawDoc),
     language: asArray((rawDoc as any)?.language || (rawDoc as any)?.volumeInfo?.language),
     hasCover: hasCover(rawDoc),
-    rawDoc,
+    rawDoc: normalizedRawDoc,
     source,
     formatCategory,
     hardcover: (rawDoc as any)?.hardcover,
