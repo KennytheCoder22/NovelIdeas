@@ -84,8 +84,6 @@ type RecommendationHistoryBucket = {
 
 type Props = {
   onOpenSearch?: () => void;
-  onOpenCustomize?: () => void;
-  showCustomizeButton?: boolean;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
   swipeCategories?: {
     books?: boolean;
@@ -1311,15 +1309,6 @@ function handleLeft() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: "#071526" }]}>
       <View style={styles.container}>
-        {props.showCustomizeButton ? (
-          <TouchableOpacity
-            style={styles.customizePill}
-            onPress={() => (props.onOpenCustomize ? props.onOpenCustomize() : router.push("/app_admin-web"))}
-          >
-            <Text style={styles.customizePillText}>Customize</Text>
-          </TouchableOpacity>
-        ) : null}
-
         <View style={styles.topRow}>
           {enabledDeckList.map((k) => {
             const selected = deckKey === k;
@@ -1714,23 +1703,6 @@ const styles = StyleSheet.create({
 
   cardArea: { flex: 1, width: "100%", alignItems: "center", justifyContent: "flex-start", minHeight: 0 },
   cardAreaTight: { paddingTop: 0, paddingBottom: 0 },
-
-  customizePill: {
-    alignSelf: "center",
-    marginTop: 2,
-    marginBottom: 2,
-    paddingVertical: 7,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#223b6b",
-    backgroundColor: "#0b1e33",
-  },
-  customizePillText: {
-    color: "#e5efff",
-    fontWeight: "800",
-    fontSize: 12,
-  },
 
   topRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   deckChip: {
