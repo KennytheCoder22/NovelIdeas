@@ -124,8 +124,7 @@ export default function TabLayout() {
           backgroundColor: "#071526",
 
           // RN Web sometimes needs this to ensure borders render predictably.
-          borderStyle: "solid",
-
+          
           // IMPORTANT: No divider line under the navigation header.
           // The single divider between nav header and the banner is owned by app/(tabs)/index.tsx.
           borderBottomWidth: 0,
