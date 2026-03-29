@@ -1328,15 +1328,6 @@ function handleLeft() {
           })}
         </View>
 
-        <View style={styles.statusRow}>
-          <Text style={styles.statusText}>
-            Swipes: {totalSwipes}/{requiredSwipes}
-          </Text>
-          <Text style={styles.statusText}>
-            Right: {rightSwipes} • Left: {leftSwipes} • Skip: {downSwipes}
-          </Text>
-        </View>
-
         {props.showCustomizeButton ? (
           <View style={styles.customizePillRow}>
             <TouchableOpacity
@@ -1347,6 +1338,15 @@ function handleLeft() {
             </TouchableOpacity>
           </View>
         ) : null}
+
+        <View style={styles.statusRow}>
+          <Text style={styles.statusText}>
+            Swipes: {totalSwipes}/{requiredSwipes}
+          </Text>
+          <Text style={styles.statusText}>
+            Right: {rightSwipes} • Left: {leftSwipes} • Skip: {downSwipes}
+          </Text>
+        </View>
 
         <View style={styles.statusDivider} />
 
@@ -1736,8 +1736,8 @@ const styles = StyleSheet.create({
   customizePillRow: {
     width: "100%",
     alignItems: "center",
-    marginTop: 6,
-    marginBottom: 4,
+    marginTop: 0,
+    marginBottom: 6,
   },
   customizePill: {
     paddingVertical: 7,

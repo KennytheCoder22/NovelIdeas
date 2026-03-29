@@ -1434,7 +1434,7 @@ const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
   const adminPinReady: boolean = adminPinEnabled && /^\d{6}$/.test(adminPin);
-  const showCustomizeButton = Platform.OS === "web" && !adminPinReady;
+  const showCustomizeButton = Platform.OS === "web";
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
@@ -1594,7 +1594,11 @@ if ((json as any)?.enabledDecks && typeof (json as any).enabledDecks === "object
                   setShowAdminPinPrompt(false);
                   setAdminPinEntry("");
                   setAdminPinError(null);
-                  setAdminUnlocked(true);
+                  if (Platform.OS === "web") {
+                    router.push("/app_admin-web");
+                  } else {
+                    setAdminUnlocked(true);
+                  }
                 }}
               >
                 <Text style={[styles.btnText, { color: theme.highlightText }]}>Unlock</Text>
@@ -1900,7 +1904,7 @@ logoDataUrl={logoDataUrl}
           swipeCategories={swipeCategories}
           enabledDecks={enabledDecks}
           showCustomizeButton={showCustomizeButton}
-          onOpenCustomize={() => router.push("/app_admin-web")}
+          onOpenCustomize={openAdminEntry}
           onOpenSearch={() => {
             setMode("search");
             setTimeout(() => queryInputRef.current?.focus?.(), 50);
