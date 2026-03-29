@@ -105,8 +105,6 @@ export default function TabLayout() {
     const highlightKey: HighlightKey =
       (draft?.branding?.highlight as HighlightKey) || "gold_accent";
 
-    // buildTheme in this project expects (mainTheme, highlight, titleTextColor).
-    // Keep title text defaulted to "white" to match existing behavior.
     return buildTheme(mainThemeKey, highlightKey, "white" as any);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [webDraftTick]);
@@ -116,23 +114,11 @@ export default function TabLayout() {
       initialRouteName="swipe"
       screenOptions={{
         headerShown: true,
-
-        // Kill the default navigation shadow/divider (iOS + web).
         headerShadowVisible: false,
-
         headerStyle: {
-          backgroundColor: "#071526",
-
-          // RN Web sometimes needs this to ensure borders render predictably.
-          
-          // IMPORTANT: No divider line under the navigation header.
-          // The single divider between nav header and the banner is owned by app/(tabs)/index.tsx.
-          borderBottomWidth: 0,
-          borderBottomColor: "transparent",
-
+          backgroundColor: headerTheme?.appBg || "#071526",
           ...(Platform.OS === "android" ? { elevation: 0 } : null),
         },
-
         headerTitle: () => <HeaderTitle onPress={onTitleTap} />,
         headerRight: () => null,
       }}
