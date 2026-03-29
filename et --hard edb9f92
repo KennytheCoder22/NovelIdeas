@@ -1,0 +1,26 @@
+[33me8f6172[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fix: disable slider on web to prevent crash3
+[33mf964a89[m Fix config API runtime (remove require)2
+[33m253d098[m Fix config API runtime (remove require)
+[33mbf144a0[m Fix config API runtime (remove require)
+[33m4b01931[m QR code changes
+[33medb9f92[m Button Swap
+[33m6059700[m Search on my Own fix
+[33m194b06c[m Add adult book cards to swipe deck
+[33m9d5fd91[m Fix swipe category toggle sync
+[33m6ebee3c[m Fix swipe category toggle sync issue
+[33m82e35fe[m Fixed Deck selection toggles
+[33md89b281[m Disable card gesture responders on web
+[33m8b82fbd[m Fix swipe gesture bug on web
+[33m6d2ef2f[m Fix swipe gesture bug on web
+[33m9d265e4[m Fix: remove early Kitsu cap + add final-stage source balancing
+[33m12826c9[m Remove bad app/api/gcd and keep correct Vercel API
+[33m477ea1c[m Add GCD API endpoint
+[33m81c09e6[m Refactor backfill pool logic in finalRecommender.ts
+[33m8cf4231[m Refactor remainingBackfillPool initialization
+[33m1c42fb2[m Resolve merge conflict and keep local recommender fix
+[33m041d8ea[m Fix remainingBackfillPool scope bug
+[33m231417c[m Fix backfill pool logging and ranking logic
+[33m2f4608e[m Fix typo in filter method for remaining candidates
+[33m6f94915[m Fix remainingBackfillPool bug
+[33m6073014[m Fix includeKitsu production bug
+[33m07363da[m initial commit
