@@ -1307,7 +1307,7 @@ function handleLeft() {
   const isFirstRec = recItems.length > 0 && recIndex === 0;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: undefined ?? "#071526" }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: "#071526" }]}>
       <View style={styles.container}>
         <View style={styles.topRow}>
           {enabledDeckList.map((k) => {
