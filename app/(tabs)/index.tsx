@@ -297,16 +297,7 @@ function StudentView(props: {
           <Text style={[styles.subtitle, { color: props.theme.muted }]}>Book Finder</Text>
         </TouchableOpacity>
 
-        <View style={styles.headerRight}>
-              {showCustomizeButton ? (
-                <TouchableOpacity
-                  onPress={() => router.push("/app_admin-web")}
-                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderRadius: 8 }}
-                >
-                  <Text style={{ fontWeight: "800" }}>Customize</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
+        <View style={styles.headerRight} />
       </View>
 
       <View
