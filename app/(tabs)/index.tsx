@@ -1368,6 +1368,7 @@ export default function HomeScreen() {
   const [hostedMainThemeKey, setHostedMainThemeKey] = useState<ThemeKey | null>(null);
   const [hostedHighlightKey, setHostedHighlightKey] = useState<HighlightKey | null>(null);
   const [hostedTitleTextKey, setHostedTitleTextKey] = useState<TitleTextKey | null>(null);
+  const [hostedEnabledDecks, setHostedEnabledDecks] = useState<Record<string, boolean> | null>(null);
 
   const [config, setConfig] = useState<any>(() => {
     // Desktop web: if the admin-web page saved a draft into localStorage,
@@ -1396,7 +1397,8 @@ export default function HomeScreen() {
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
 
-  const enabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});
+  const baseEnabledDecks = (config?.enabledDecks ?? config?.decks?.enabled ?? {});
+  const enabledDecks = hostedEnabledDecks ?? baseEnabledDecks;
   const swipeCategories: SwipeCategories = config?.swipe?.categoriesEnabled ?? config?.swipe?.categories ?? DEFAULT_SWIPE_CATEGORIES;
   const libraryName = useMemo(() => (config?.branding?.libraryName ?? config?.library?.name ?? ""), [config]);
   const displayLibraryName = useMemo(() => hostedLibraryName || libraryName, [hostedLibraryName, libraryName]);
@@ -1442,6 +1444,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     async function loadHostedConfig() {
       if (!hostedLibraryId) {
         setHostedLibraryName(null);
+        setHostedEnabledDecks(null);
         return;
       }
 
@@ -1450,7 +1453,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         const json = (await res.json()) as HostedLibraryConfig;
 
         if (cancelled || !res.ok) {
-          if (!cancelled) setHostedLibraryName(null);
+          if (!cancelled) {
+            setHostedLibraryName(null);
+            setHostedEnabledDecks(null);
+          }
           return;
         }
 
@@ -1466,13 +1472,19 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
         if (typeof branding.titleTextColor === "string") {
           setHostedTitleTextKey(branding.titleTextColor as TitleTextKey);
         }
+        if (json?.enabledDecks && typeof json.enabledDecks === "object") {
+          setHostedEnabledDecks(json.enabledDecks as Record<string, boolean>);
+        }
         if (typeof nextName === "string" && nextName.trim()) {
           setHostedLibraryName(nextName);
         } else {
           setHostedLibraryName(null);
         }
       } catch {
-        if (!cancelled) setHostedLibraryName(null);
+        if (!cancelled) {
+          setHostedLibraryName(null);
+          setHostedEnabledDecks(null);
+        }
       }
     }
 
