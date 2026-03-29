@@ -84,8 +84,6 @@ type RecommendationHistoryBucket = {
 
 type Props = {
   onOpenSearch?: () => void;
-  onOpenCustomize?: () => void;
-  showCustomizeButton?: boolean;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
   swipeCategories?: {
     books?: boolean;
@@ -1328,17 +1326,6 @@ function handleLeft() {
           })}
         </View>
 
-        {props.showCustomizeButton ? (
-          <View style={styles.customizePillRow}>
-            <TouchableOpacity
-              style={styles.customizePill}
-              onPress={() => (props.onOpenCustomize ? props.onOpenCustomize() : router.push("/app_admin-web"))}
-            >
-              <Text style={styles.customizePillText}>Customize</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
         <View style={styles.statusRow}>
           <Text style={styles.statusText}>
             Swipes: {totalSwipes}/{requiredSwipes}
@@ -1732,26 +1719,6 @@ const styles = StyleSheet.create({
 
   statusRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   statusText: { color: "#cbd5f5", fontWeight: "800", fontSize: 12 },
-
-  customizePillRow: {
-    width: "100%",
-    alignItems: "center",
-    marginTop: 0,
-    marginBottom: 6,
-  },
-  customizePill: {
-    paddingVertical: 7,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#223b6b",
-    backgroundColor: "#0b1e33",
-  },
-  customizePillText: {
-    color: "#e5efff",
-    fontWeight: "800",
-    fontSize: 12,
-  },
 
   stage: { flex: 1, justifyContent: "center", alignItems: "center" },
   stageTop: { justifyContent: "flex-start", paddingTop: 10 },

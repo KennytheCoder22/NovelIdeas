@@ -1434,7 +1434,6 @@ const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
   const adminPinReady: boolean = adminPinEnabled && /^\d{6}$/.test(adminPin);
-  const showCustomizeButton = Platform.OS === "web";
 
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
@@ -1610,6 +1609,24 @@ if ((json as any)?.enabledDecks && typeof (json as any).enabledDecks === "object
     );
   }
 
+
+  function openAdminEntry() {
+    if (adminPinReady) {
+      setAdminPinEntry("");
+      setAdminPinError(null);
+      setShowAdminPinPrompt(true);
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      try {
+        router.push("/app_admin-web");
+        return;
+      } catch {}
+    }
+
+    setAdminUnlocked(true);
+  }
 
   function handleTitleTap() {
     const next = tapCount + 1;
@@ -1903,8 +1920,6 @@ logoDataUrl={logoDataUrl}
         <SwipeDeckScreen
           swipeCategories={swipeCategories}
           enabledDecks={enabledDecks}
-          showCustomizeButton={showCustomizeButton}
-          onOpenCustomize={openAdminEntry}
           onOpenSearch={() => {
             setMode("search");
             setTimeout(() => queryInputRef.current?.focus?.(), 50);
