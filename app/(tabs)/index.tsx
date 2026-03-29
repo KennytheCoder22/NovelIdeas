@@ -1470,9 +1470,9 @@ if (branding && typeof (branding as any).mainTheme === "string") {
 if (branding && typeof (branding as any).highlight === "string") {
   setHostedHighlightKey((branding as any).highlight as HighlightKey);
 }
-        if (typeof branding.titleTextColor === "string") {
-          setHostedTitleTextKey(branding.titleTextColor as TitleTextKey);
-        }
+        if (branding && typeof (branding as any).titleTextColor === "string") {
+  setHostedTitleTextKey((branding as any).titleTextColor as TitleTextKey);
+}
         if (json?.enabledDecks && typeof json.enabledDecks === "object") {
           setHostedEnabledDecks(json.enabledDecks as Record<string, boolean>);
         }
