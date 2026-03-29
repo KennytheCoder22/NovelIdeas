@@ -1473,9 +1473,9 @@ if (branding && typeof (branding as any).highlight === "string") {
         if (branding && typeof (branding as any).titleTextColor === "string") {
   setHostedTitleTextKey((branding as any).titleTextColor as TitleTextKey);
 }
-        if (json?.enabledDecks && typeof json.enabledDecks === "object") {
-          setHostedEnabledDecks(json.enabledDecks as Record<string, boolean>);
-        }
+if ((json as any)?.enabledDecks && typeof (json as any).enabledDecks === "object") {
+  setHostedEnabledDecks((json as any).enabledDecks as Record<string, boolean>);
+}
         if (typeof nextName === "string" && nextName.trim()) {
           setHostedLibraryName(nextName);
         } else {
