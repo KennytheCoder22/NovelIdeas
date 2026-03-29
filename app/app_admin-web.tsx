@@ -807,33 +807,35 @@ export default function AdminWebScreen() {
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Lock</Text>
-        <Text style={{ marginTop: 6, fontSize: 12 }}>
-          When a valid 6-digit PIN is enabled, the Customize button will require the PIN before opening Admin.
-        </Text>
-        <View style={styles.rowBetween}>
-          <Text style={{ color: theme.text, fontWeight: "700" }}>Enable PIN</Text>
-          <Switch value={adminPinEnabled} onValueChange={() => togglePathBool(["admin", "pinEnabled"])} />
-        </View>
 
-        <Text style={[styles.label, { color: theme.muted, marginTop: 10 }]}>6-digit PIN</Text>
-        <TextInput
-          style={[
-            styles.input,
-            { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, maxWidth: 260 },
-          ]}
-          value={adminPin}
-          onChangeText={(t) => {
-            const clean = t.replace(/\D/g, "").slice(0, 6);
-            setPath(["admin", "pin"], clean);
-          }}
-          placeholder="123456"
-          placeholderTextColor="#7a8aa0"
-          keyboardType="number-pad"
-        />
-        {adminPinEnabled && adminPin.length !== 6 ? (
-          <Text style={[styles.note, { color: theme.danger }]}>PIN must be exactly 6 digits.</Text>
-        ) : null}
+<View style={styles.rowBetween}>
+  <Text style={{ color: theme.text, fontWeight: "700" }}>Enable PIN</Text>
+  <Switch value={adminPinEnabled} onValueChange={() => togglePathBool(["admin", "pinEnabled"])} />
+</View>
 
+<Text style={[styles.label, { color: theme.muted, marginTop: 10 }]}>6-digit PIN</Text>
+<TextInput
+  style={[
+    styles.input,
+    { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, maxWidth: 260 },
+  ]}
+  value={adminPin}
+  onChangeText={(t) => {
+    const clean = t.replace(/\D/g, "").slice(0, 6);
+    setPath(["admin", "pin"], clean);
+  }}
+  placeholder="123456"
+  placeholderTextColor="#7a8aa0"
+  keyboardType="number-pad"
+/>
+
+{adminPinEnabled && adminPin.length !== 6 ? (
+  <Text style={[styles.note, { color: theme.danger }]}>PIN must be exactly 6 digits.</Text>
+) : null}
+
+<Text style={[styles.note, { color: theme.text, marginTop: 8 }]}>
+  When enabled, the Customize button will require this PIN before opening Admin.
+</Text>
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>QR Export</Text>
