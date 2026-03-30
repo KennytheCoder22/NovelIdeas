@@ -47,14 +47,23 @@ function buildBriefDrivenQuery(input: BuildFinalQueryInput): string {
           ? ['subject:"young adult fiction"', 'subject:"juvenile fiction"', 'subject:fiction']
           : ['subject:fiction'];
 
-  const anchors = [
-    ...brief.genreAnchors.map(quoteIfNeeded),
-    ...brief.thematicAnchors.map(quoteIfNeeded),
+  const priorityAnchors = [
     quoteIfNeeded(brief.protagonistAnchor || ""),
     quoteIfNeeded(brief.toneAnchor || ""),
+    ...((brief as any).enforcedNonGenre || []).map(quoteIfNeeded),
   ].filter(Boolean);
 
-  const query = unique([...baseAudience, ...anchors]).slice(0, 6).join(" ").trim();
+  const secondaryAnchors = [
+    ...brief.thematicAnchors.map(quoteIfNeeded),
+    ...brief.genreAnchors.map(quoteIfNeeded),
+  ].filter(Boolean);
+
+  const anchors = unique([
+    ...priorityAnchors,
+    ...secondaryAnchors,
+  ]);
+
+  const query = unique([...baseAudience, ...anchors]).slice(0, 5).join(" ").trim();
 
   if (query) return query;
 

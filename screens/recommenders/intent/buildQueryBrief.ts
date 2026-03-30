@@ -40,15 +40,35 @@ function toneToQueryAnchor(value: IntentProfile["tonePreference"]): string | und
   }
 }
 
-export function buildQueryBrief(intent: IntentProfile): QueryBrief {
+export function buildQueryBrief(intent: IntentProfile): QueryBrief & { enforcedNonGenre?: string[] } {
+  const confidence = intent.retrievalConfidence;
+
+  const genreAnchors = intent.genreAnchors.slice(0, 2);
+
+  const protagonistAnchor = protagonistToQueryAnchor(intent.protagonistPreference);
+  const toneAnchor = toneToQueryAnchor(intent.tonePreference);
+
+  let enforcedNonGenre: string[] = [];
+
+  if (confidence >= 0.6) {
+    if (protagonistAnchor) {
+      enforcedNonGenre.push(protagonistAnchor);
+    } else if (toneAnchor) {
+      enforcedNonGenre.push(toneAnchor);
+    } else if (intent.thematicAnchors.length) {
+      enforcedNonGenre.push(intent.thematicAnchors[0]);
+    }
+  }
+
   return {
     audience: intent.audience,
-    genreAnchors: intent.genreAnchors.slice(0, 3),
-    thematicAnchors: intent.thematicAnchors.slice(0, 3),
-    protagonistAnchor: protagonistToQueryAnchor(intent.protagonistPreference),
-    toneAnchor: toneToQueryAnchor(intent.tonePreference),
+    genreAnchors,
+    thematicAnchors: intent.thematicAnchors.slice(0, 2),
+    protagonistAnchor,
+    toneAnchor,
     formatBias: intent.formatBias as FormatBias | undefined,
     queryGuards: intent.queryGuards.slice(0, 2),
-    confidence: intent.retrievalConfidence,
+    confidence,
+    enforcedNonGenre,
   };
 }
