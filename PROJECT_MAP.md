@@ -1,6 +1,6 @@
-# NovelIdeas Project Map (rebuilt from canonical zip)
+# NovelIdeas Project Map (repo-grounded replacement)
 
-This map is rebuilt from the uploaded canonical repo zip, not from the prior map. It reflects the files that actually exist in the project now.
+This map replaces the previous `PROJECT_MAP.md` and is based on the uploaded `NovelIdeas.zip` repo snapshot, not on older assumptions.
 
 ---
 
@@ -8,31 +8,77 @@ This map is rebuilt from the uploaded canonical repo zip, not from the prior map
 
 Use the uploaded repo zip as the source of truth for this map.
 
-- `NovelIdeas.zip` — current canonical repo snapshot
+- `NovelIdeas.zip` — current repo snapshot
 - `PROJECT_MAP.md` — previous map, now partially stale
 
-Most important stale point: the old map still references `screens/swipe/defaultCards.ts`, but that file is **not** in the repo anymore. The teen deck comments indicate those media signal cards were migrated into `data/swipeDecks/ms_hs.ts`.
+The prior map had two important accuracy problems:
+
+1. it referenced files that are no longer present (for example `screens/swipe/defaultCards.ts` and `screens/recommenders/googleBooks/googleBooksRecommenderCanonical.ts`)
+2. it did not include the newer teen visual-side recommenders and hosted-library routes
+
+---
+
+## What this repo is now
+
+NovelIdeas is an **Expo Router / React Native** app with a **web deployment layer that also uses Next/Vercel-style wiring**.
+
+Signals that matter:
+
+- `package.json`
+  - `main: "expo-router/entry"`
+  - both Expo scripts (`expo:start`, `android`, `ios`, `web`) and Next scripts (`dev`, `build`, `start`)
+- `vercel.json`
+  - SPA-style rewrite to `index.html`
+- `api/gcd.ts`
+  - Vercel serverless handler for the GCD recommender bridge
+- `app/api/**`
+  - Expo Router API routes for config + Hardcover
+
+Practical mental model:
+
+- **mobile/native shell:** Expo + React Native + Expo Router
+- **web shell:** Expo Router on web, with Next/Vercel deployment glue
+- **core product:** swipe cards -> tag/taste signals -> multi-engine recommendation router -> final reranker
 
 ---
 
 ## Actual top-level structure
 
 ```text
+api/
+  gcd.ts
+
 app/
   (tabs)/
     _layout.tsx
     explore.tsx
     index.tsx
     swipe.tsx
+  api/
+    config/[libraryId]/+api.ts
+    hardcover/+api.ts
+  c/
+    [libraryId].tsx
+    test-library.tsx
   _layout.tsx
   admin-collection.tsx
-  api/hardcover/+api.ts
   app_admin-web.tsx
   modal.tsx
   swipe.tsx
 
 assets/
+  book_logo.png
+  images/*
+
 components/
+  ui/*
+  external-link.tsx
+  haptic-tab.tsx
+  hello-wave.tsx
+  parallax-scroll-view.tsx
+  themed-text.tsx
+  themed-view.tsx
+
 constants/
   brandTheme.ts
   deckLabels.ts
@@ -49,12 +95,19 @@ data/
     types.ts
   tagNormalizationMap.ts
 
+hooks/
+  use-color-scheme.ts
+  use-color-scheme.web.ts
+  use-theme-color.ts
+
 screens/
   AdminCollectionUploadScreen.tsx
   SwipeDeckScreen.tsx
   recommenders/
     dev/
+    gcd/
     googleBooks/
+    kitsu/
     openLibrary/
     taste/
     finalRecommender.ts
@@ -72,11 +125,19 @@ screens/
     recommendationsByBand.ts
     swipeHelpers.ts
 
+scripts/
+  reset-project.js
+
 services/
-  hardcover/hardcoverRatings.ts
+  hardcover/
+    hardcoverRatings.ts
 
 NovelIdeas.json
 README.md
+app.json
+package.json
+vercel.json
+manga-slider-integration-notes.md
 ```
 
 ---
@@ -87,339 +148,400 @@ README.md
 
 - `app/_layout.tsx`
   - root Expo Router stack
-  - mounts `(tabs)` as the main app shell
-  - also exposes `app_admin-web` and `modal`
+  - mounts `(tabs)` as the main shell
+  - explicitly exposes `app_admin-web` and `modal`
 
 - `app/(tabs)/_layout.tsx`
-  - stack layout for the main user-facing shell
-  - branded header title is driven by `constants/runtimeConfig.ts`
-  - 7-tap title gesture pushes to `/admin`, but the in-app Home screen also pushes to `/app_admin-web`
-  - `swipe` is treated as the real default route
+  - top-level stack layout for the branded user shell
+  - header title is driven by `constants/runtimeConfig.ts`
+  - `swipe` is the default route
+  - contains a 7-tap hidden admin gesture
 
 - `app/swipe.tsx`
-  - direct route to `SwipeDeckScreen`
+  - thin route wrapper that loads config and renders `SwipeDeckScreen`
 
 - `app/(tabs)/swipe.tsx`
-  - renders the same Home screen as a shortcut, preserving the branded header/admin unlock behavior
-
-- `app/(tabs)/explore.tsx`
-  - Expo starter/example screen; not part of the core NovelIdeas product flow
-
-### 2) Home / admin shell
+  - also renders the main swipe/home experience from within the tab shell
 
 - `app/(tabs)/index.tsx`
-  - largest UI shell in the repo
-  - student-facing home + search UI
-  - admin controls for branding, enabled decks, swipe categories, recommendation source, QR flow, and navigation to web admin
-  - contains back-compat schema sync between legacy config and current config shapes
-  - still contains manual Open Library search code and Open Library cover URL helpers
-  - passes config into `SwipeDeckScreen`
+  - large home/admin/search shell
+  - this is effectively the main control center for student-facing search plus admin toggles
 
-- `app/app_admin-web.tsx`
-  - dedicated web admin editor
-  - works against `NovelIdeas.json`-style config
-  - reads/writes a web draft in localStorage
-  - includes theme/highlight/title text color controls and config normalization
+- `app/(tabs)/explore.tsx`
+  - leftover Expo starter/example screen
+  - not part of the main NovelIdeas product flow
 
-- `constants/runtimeConfig.ts`
-  - tiny runtime store for the library name shown in the header
-
-### 3) Swipe experience
+### 2) Main product orchestrator
 
 - `screens/SwipeDeckScreen.tsx`
-  - central orchestration point for the swipe product
-  - loads the active deck from `data/swipeDecks/*`
+  - the main product orchestrator
+  - resolves the active deck from `data/swipeDecks/*`
   - filters cards by enabled media categories
-  - tracks swipe counts, tag counts, session nonce, recommendation state, feedback, cover caches, and debug UI
-  - builds a taste profile from swipe tags plus recommendation feedback
-  - keeps a lightweight in-memory recommendation pipeline state for personality + session mood previews
-  - calls `screens/recommenders/recommenderRouter.ts` for the actual recommendation fetch
-  - still imports `openLibraryFromTags` helpers for some legacy/shared query and cover behavior
-  - exposes the dev equalizer panel in the UI
+  - accumulates tag counts from swipes
+  - builds taste state and feedback state
+  - calls `screens/recommenders/recommenderRouter.ts` for recommendation fetch + merge
+  - shows the dev equalizer/tuning UI
 
-### 4) Deck source of truth
+If you only keep one runtime file in your head, keep this one.
 
-These are now the canonical card/deck files:
+### 3) Deck source of truth
+
+These are the actual canonical swipe decks now:
 
 - `data/swipeDecks/k2.ts`
   - kids deck
-  - book/title-style cards with flat `tags`
-  - derives an age-band genre guardrail (`juvenile fiction` vs `middle grade fiction`)
-
 - `data/swipeDecks/36.ts`
-  - pre-teen prompt deck
-  - prompt-style cards for genre/topic/vibe/pace/format/world
-
+  - pre-teen deck
 - `data/swipeDecks/ms_hs.ts`
-  - teen deck
-  - comments explicitly say migrated media signal cards that previously lived in `screens/swipe/defaultCards.ts` now live here
-  - this is a major reason the old map is out of date
-
+  - middle/high school deck
+  - this is where the teen media-signal content lives now
 - `data/swipeDecks/adult.ts`
   - adult deck
-
 - `data/swipeDecks/types.ts`
-  - shared deck/card schema
-  - defines the split between display-only metadata and recommendation output metadata
-  - also defines optional weighted-tag types, though runtime still uses raw tag counts in several places
+  - shared deck/card typing
+  - separates **display-only** metadata from **recommendation-output** metadata
+  - defines optional weighted-tag types and defaults
 
-### 5) Recommendation engine boundary
+Important stale correction:
+
+- `screens/swipe/defaultCards.ts` is **not in the repo**
+- the deck content lives in `data/swipeDecks/*`
+
+### 4) Recommendation router = the main engine switchboard
 
 - `screens/recommenders/recommenderRouter.ts`
-  - the engine switchboard
-  - current default policy is:
-    - `k2` → Open Library
-    - all other decks → Google Books
-  - if you want to change the default engine policy, start here
+  - central orchestration boundary for recommendation engines
+  - always fetches Google Books and Open Library
+  - conditionally adds **Kitsu** and **GCD** for teen visual/graphic signals
+  - normalizes engine results
+  - sends merged candidates into `finalRecommenderForDeck(...)`
 
-- `screens/recommenders/types.ts`
-  - canonical engine input/output types
-  - defines `EngineId`, `DeckKey`, `TagCounts`, `RecommendationDoc`, `RecommendationResult`, and recommender input shape
+Current behavior in plain English:
 
-### 6) Google Books path
+- preferred/default engine choice:
+  - `k2` -> `openLibrary`
+  - everything else -> `googleBooks`
+- actual fetch path:
+  - Google Books + Open Library are both queried
+  - teen manga / anime / graphic-novel / superhero signals can also pull in:
+    - `screens/recommenders/kitsu/kitsuMangaRecommender.ts`
+    - `screens/recommenders/gcd/gcdGraphicNovelRecommender.ts` via `api/gcd.ts`
+
+So the current system is **not** just “kids use Open Library, everyone else uses Google Books.”
+It is now a **multi-source merge-and-rerank pipeline**.
+
+### 5) Active recommender engines
+
+#### Google Books
 
 - `screens/recommenders/googleBooks/googleBooksRecommender.ts`
-  - main Google Books recommender implementation
-  - imports query-building helpers from the older swipe-layer files
-  - enriches books with Hardcover ratings
-  - large, dominant implementation for non-kids lanes
+  - main Google Books engine
+  - used heavily for non-kids decks
+  - enriches results with Hardcover ratings
 
-- `screens/recommenders/googleBooks/googleBooksRecommenderCanonical.ts`
-  - second Google Books recommender file in the repo
-  - appears to be an alternate or canonicalized branch of the same logic, but `recommenderRouter.ts` imports `googleBooksRecommender.ts`, not this file
-  - treat as secondary until routing is changed
-
-- `services/hardcover/hardcoverRatings.ts`
-  - client-side wrapper for the Hardcover proxy route
-
-- `app/api/hardcover/+api.ts`
-  - server route that calls Hardcover GraphQL using `HARDCOVER_API_TOKEN`
-  - returns rating and rating count for a title/author lookup
-
-### 7) Open Library path
+#### Open Library
 
 - `screens/recommenders/openLibrary/openLibraryRecommender.ts`
-  - Open Library engine used by the router for kids by default
+  - Open Library engine
+  - still important, especially for kids/default `k2`
 
 - `screens/recommenders/openLibrary/openLibraryKidsQueryBuilder.ts`
-  - kids-specific query shaping and domain mode selection
-  - supports domain modes like picture books / early reader / chapter-middle
+  - kids-specific query shaping
+  - supports domain modes such as picture / earlyReader / chapterMiddle
 
-### 8) Shared recommendation ranking and normalization
+#### Kitsu (new vs prior map)
+
+- `screens/recommenders/kitsu/kitsuMangaRecommender.ts`
+  - teen-only auxiliary manga engine
+  - activates when teen sessions show manga/anime/graphic signals
+  - thin fetcher that projects Kitsu responses into shared recommendation docs
+
+#### GCD / Grand Comics Database (new vs prior map)
+
+- `screens/recommenders/gcd/gcdGraphicNovelRecommender.ts`
+  - teen-only auxiliary comics / graphic novel / superhero recommender
+
+- `api/gcd.ts`
+  - Vercel serverless bridge used by the app/router to call GCD logic
+
+### 6) Shared ranking, normalization, and taste system
+
+- `screens/recommenders/types.ts`
+  - canonical engine contracts
+  - `EngineId` now includes:
+    - `googleBooks`
+    - `openLibrary`
+    - `kitsu`
+    - `gcd`
 
 - `screens/recommenders/normalizeCandidate.ts`
-  - normalizes raw Google Books and Open Library docs into one comparable candidate shape
+  - converts source-specific docs into one candidate shape
 
 - `screens/recommenders/finalRecommender.ts`
-  - post-fetch ranking/filtering layer
+  - main post-fetch choke point
   - dedupes candidates
-  - scores quality/trust signals
-  - penalizes anthologies, guides, spammy titles, media tie-ins, etc.
-  - lane-aware final reranking happens here
+  - scores metadata quality + trust signals
+  - applies lane-aware ranking, penalties, diversity, repeat suppression, etc.
 
 - `screens/recommenders/recommenderProfiles.ts`
-  - lane-specific tuning values for adult / teen / preTeen / kids
-  - maps deck key to lane
+  - lane-level tuning defaults for:
+    - `kids`
+    - `preTeen`
+    - `teen`
+    - `adult`
+  - now includes manga-specific knobs such as:
+    - `kitsuSourceBoost`
+    - `minMangaResults`
 
-### 9) Taste system and tuning
+#### Taste layer
 
 - `screens/recommenders/taste/tasteProfileBuilder.ts`
-  - builds a cross-media taste profile from swipe tags and feedback
-  - weights structured tag prefixes differently (`vibe`, `theme`, `genre`, etc.)
-
 - `screens/recommenders/taste/personalityProfile.ts`
-  - persistent-ish personality vector model
-
 - `screens/recommenders/taste/sessionMood.ts`
-  - session-level mood model based on recent swipes
-
 - `screens/recommenders/taste/tasteBlender.ts`
-  - blends long-term personality with session mood
-
 - `screens/recommenders/taste/tasteSimilarity.ts`
-  - scores and ranks candidate books against a taste vector
-
 - `screens/recommenders/taste/recommendationPipeline.ts`
-  - generic pipeline class that manages personality, session swipes, mood, and ranking lifecycle
-  - in `SwipeDeckScreen`, this is currently used with in-memory stores for preview/debug state rather than as the primary backend recommendation source
+- `screens/recommenders/taste/types.ts`
 
-- `screens/recommenders/dev/RecommenderEqualizerPanel.tsx`
-  - UI for tuning recommender weights
+This is the personalization layer on top of raw tag counts.
 
-- `screens/recommenders/dev/recommenderProfileOverrides.ts`
-- `screens/recommenders/dev/recommenderTuningStorage.ts`
-  - persistence and override helpers for tuning profiles
+### 7) The older swipe/query layer is still active
 
----
-
-## Legacy / compatibility layer still in active use
-
-These files are no longer the whole recommendation system, but they still matter.
+These files are older, but still materially used:
 
 - `screens/swipe/openLibraryFromTags.ts`
-  - still a major helper module
-  - builds tag-count-driven query strings
-  - contains Google Books search logic despite the filename
-  - also still contains Open Library HTTP search and Open Library cover helpers
-  - imported by `SwipeDeckScreen`, band-specific files, and the Google Books recommender
-
 - `screens/swipe/openLibraryCore.ts`
-  - shared token normalization and Google Books helper utilities
-  - also still contains an Open Library cover helper
-
 - `screens/swipe/openLibraryKids.ts`
 - `screens/swipe/openLibraryPreTeen.ts`
 - `screens/swipe/openLibraryTeen.ts`
 - `screens/swipe/openLibraryAdult.ts`
-  - band-specific query shaping wrappers that still feed the older tag-query approach
-
 - `screens/swipe/recommendationsByBand.ts`
-  - chooses the final query builder for each deck key
-
 - `screens/swipe/swipeHelpers.ts`
-  - assorted swipe utilities
-  - deck resolution, shuffling, tag count mutation, search helpers, cover/image lookup, fallback book picking, candidate scoring
 
-### Practical meaning
+Practical meaning:
 
-The project has **two overlapping recommendation layers**:
+The repo still has **two overlapping recommendation layers**:
 
-1. the newer `screens/recommenders/**` engine/router/ranking/taste stack
-2. the older `screens/swipe/openLibrary*` tag-query stack
+1. the newer `screens/recommenders/**` multi-engine + reranking layer
+2. the older `screens/swipe/openLibrary*` tag-query helpers
 
-They are connected rather than fully separated. If you change recommendation behavior, you usually need to check both layers.
+They are connected, not fully retired. If recommendation behavior changes, check both layers.
 
----
+### 8) Admin, config, and branding
 
-## Config and theming
+- `app/(tabs)/index.tsx`
+  - student UI + admin toggles + QR flow + config editing behavior
+
+- `app/app_admin-web.tsx`
+  - dedicated web admin/config editor
+  - reads/writes config draft to localStorage
 
 - `NovelIdeas.json`
-  - baseline shipped config
-  - contains branding, theme, deck enablement, recommendation source, and swipe categories
+  - shipped baseline config
   - still defaults `recommendations.source` to `open_library`
 
 - `constants/brandTheme.ts`
-  - theme and highlight presets
-  - also controls banner title text color
+  - theme/highlight presets and title-text styling
+
+- `constants/runtimeConfig.ts`
+  - runtime library-name store used by the header
 
 - `constants/deckLabels.ts`
-  - label helper for deck names
+  - deck-name labeling helper
 
 - `data/tagNormalizationMap.ts`
   - canonical raw-tag normalization layer
-  - fail-closed: unmapped tags can be dropped
-  - this is still the right place to contain tag drift
+  - this is still the right place to contain vocabulary drift
 
----
+### 9) Hosted library proof-of-concept
 
-## Collection upload / local library path
+This did not appear in the older map and now matters:
+
+- `app/api/config/[libraryId]/+api.ts`
+  - config API route for hosted library IDs
+  - currently contains a test response for `test-library`
+
+- `app/c/[libraryId].tsx`
+  - hosted-library loader route
+  - fetches `/api/config/:libraryId`
+
+- `app/c/test-library.tsx`
+  - hard-wired test page for the hosted library flow
+
+This is an early hosted-library path, not a full production-backed multi-tenant config system yet.
+
+### 10) Collection import / external services
 
 - `screens/AdminCollectionUploadScreen.tsx`
-  - MVP-style upload screen for collection imports
-  - designed around Supabase storage + an Edge Function named `import-collection`
-  - currently placeholder-configured (`PASTE_YOUR_SUPABASE_URL_HERE` etc.)
-  - not production-wired yet
+  - MVP upload screen for a library collection import
+  - designed around Supabase storage + Edge Function `import-collection`
+  - still placeholder-configured
 
 - `app/admin-collection.tsx`
   - route wrapper for the upload screen
 
+- `services/hardcover/hardcoverRatings.ts`
+  - client wrapper for Hardcover ratings
+
+- `app/api/hardcover/+api.ts`
+  - server proxy to Hardcover GraphQL
+
 ---
 
-## What changed versus the old map
+## Files that are present but mostly infrastructure / starter leftovers
 
-### Removed or no longer true
+These exist, but they are not where product logic primarily lives:
 
-- `screens/swipe/defaultCards.ts` is not present
-- the old map treated `screens/swipe/openLibraryCore.ts` + `openLibraryFromTags.ts` as the main choke points for all recommendations; that is now incomplete
-- the old map did not include:
-  - `screens/recommenders/finalRecommender.ts`
-  - `screens/recommenders/normalizeCandidate.ts`
-  - `screens/recommenders/recommenderProfiles.ts`
-  - `screens/recommenders/taste/**`
-  - `screens/recommenders/dev/**`
-  - `services/hardcover/hardcoverRatings.ts`
-  - `app/api/hardcover/+api.ts`
-  - `app/app_admin-web.tsx`
-  - `data/swipeDecks/*` as the real deck source of truth
+- `components/**`
+  - mostly generic starter/UI utilities
+- `hooks/**`
+  - theme/color helpers
+- `assets/**`
+  - icons, splash, branding image
+- `android/**`
+  - generated native Android project
+- `scripts/reset-project.js`
+  - Expo starter reset helper
+- `README.md`
+  - still mostly stock Expo starter text, not an accurate project guide
 
-### New reality
+---
 
-- `SwipeDeckScreen.tsx` is the product orchestrator
-- `recommenderRouter.ts` is the engine switchboard
-- `data/swipeDecks/*` is where deck content really lives
-- `finalRecommender.ts` is a major ranking/filtering choke point
-- `taste/**` adds a second layer of personalization logic on top of raw tags
-- kids and non-kids do not share the same default engine path
+## Important mismatches / watchouts
+
+### 1) Hidden admin route mismatch
+
+- `app/(tabs)/_layout.tsx` still tries `router.push("/admin")` on the 7-tap header gesture
+- there is **no** `app/admin.tsx` route in this repo snapshot
+- the working admin surface appears to be `/app_admin-web`
+
+So the gesture path looks stale or incomplete.
+
+### 2) Swipe category schema drift
+
+There is a small category-shape mismatch across files:
+
+- `app/(tabs)/index.tsx` and `app/app_admin-web.tsx`
+  - model categories as `books`, `movies`, `tv`, `games`, `youtube`, `anime`, `podcasts`
+- `screens/SwipeDeckScreen.tsx`
+  - supports both `podcasts` **and** `albums`
+- `NovelIdeas.json`
+  - currently ships `albums`, not `podcasts`
+
+So category config is not perfectly normalized yet.
+
+### 3) README is not trustworthy as architecture documentation
+
+- `README.md` is still default Expo template copy
+- do not use it as the current architecture guide
+
+### 4) Hardcover API route logs the token value
+
+- `app/api/hardcover/+api.ts` currently contains `console.log("TOKEN:", process.env.HARDCOVER_API_TOKEN)`
+
+That is a cleanup/security footgun worth removing.
+
+---
+
+## What changed vs the previous map
+
+### Remove these assumptions
+
+- `screens/swipe/defaultCards.ts` is part of the app
+- `screens/recommenders/googleBooks/googleBooksRecommenderCanonical.ts` exists
+- recommendation routing is only Google Books vs Open Library
+- there is no hosted-library path
+
+### Add this reality instead
+
+- `screens/SwipeDeckScreen.tsx` is the main runtime orchestrator
+- `data/swipeDecks/*` is the real deck source of truth
+- `screens/recommenders/recommenderRouter.ts` is the engine switchboard
+- `finalRecommender.ts` is the main ranking choke point
+- teen visual sessions can pull in **Kitsu** and **GCD**
+- `app/c/*` + `app/api/config/*` form an early hosted-library flow
+- the repo is a hybrid Expo/web deployment setup, not just a simple Expo starter app
 
 ---
 
 ## Best “where do I change X?” guide now
 
-### 1) Change which engine each deck uses
+### Change which engine(s) a deck can use
 Start here:
+
 - `screens/recommenders/recommenderRouter.ts`
 
-### 2) Change the actual card content for a deck
+### Change actual swipe cards / prompts / media signals
 Start here:
+
 - `data/swipeDecks/k2.ts`
 - `data/swipeDecks/36.ts`
 - `data/swipeDecks/ms_hs.ts`
 - `data/swipeDecks/adult.ts`
 
-### 3) Change tag normalization / prevent vocabulary drift
+### Change tag normalization / vocabulary control
 Start here:
+
 - `data/tagNormalizationMap.ts`
 
-### 4) Change post-fetch ranking quality
+### Change final ranking quality, source weighting, repeat suppression, manga floor, etc.
 Start here:
+
 - `screens/recommenders/finalRecommender.ts`
 - `screens/recommenders/recommenderProfiles.ts`
 
-### 5) Change taste-personalization behavior
+### Change manga / anime / graphic-session behavior
 Start here:
-- `screens/recommenders/taste/tasteProfileBuilder.ts`
-- `screens/recommenders/taste/personalityProfile.ts`
-- `screens/recommenders/taste/sessionMood.ts`
-- `screens/recommenders/taste/tasteBlender.ts`
 
-### 6) Change query-building for the older tag-driven system
-Start here:
-- `screens/swipe/openLibraryFromTags.ts`
-- `screens/swipe/openLibraryCore.ts`
-- `screens/swipe/openLibraryKids.ts`
-- `screens/swipe/openLibraryPreTeen.ts`
-- `screens/swipe/openLibraryTeen.ts`
-- `screens/swipe/openLibraryAdult.ts`
-
-### 7) Remove Open Library entirely
-You need to inspect all of these, not just one file:
+- `screens/recommenders/kitsu/kitsuMangaRecommender.ts`
+- `screens/recommenders/gcd/gcdGraphicNovelRecommender.ts`
 - `screens/recommenders/recommenderRouter.ts`
+- `api/gcd.ts`
+
+### Change Open Library query shaping
+Start here:
+
 - `screens/recommenders/openLibrary/openLibraryRecommender.ts`
 - `screens/recommenders/openLibrary/openLibraryKidsQueryBuilder.ts`
 - `screens/swipe/openLibraryFromTags.ts`
 - `screens/swipe/openLibraryCore.ts`
-- `screens/swipe/swipeHelpers.ts`
-- `app/(tabs)/index.tsx`
+- age-band wrappers in `screens/swipe/openLibrary*.ts`
 
-### 8) Change admin config UX
+### Change admin/config UX
 Start here:
+
 - `app/(tabs)/index.tsx`
 - `app/app_admin-web.tsx`
+- `NovelIdeas.json`
 - `constants/brandTheme.ts`
 - `constants/runtimeConfig.ts`
 
+### Change hosted-library config loading
+Start here:
+
+- `app/api/config/[libraryId]/+api.ts`
+- `app/c/[libraryId].tsx`
+- `app/c/test-library.tsx`
+
+### Change collection upload/import flow
+Start here:
+
+- `screens/AdminCollectionUploadScreen.tsx`
+- `app/admin-collection.tsx`
+
 ---
 
-## Short version of the current map
+## Short version
 
 If I had to reduce the repo to the files that matter most right now, I would keep this mental model:
 
-1. `screens/SwipeDeckScreen.tsx` — product orchestrator
-2. `data/swipeDecks/*` — actual deck content
-3. `screens/recommenders/recommenderRouter.ts` — engine selection
-4. `screens/recommenders/googleBooks/googleBooksRecommender.ts` and `screens/recommenders/openLibrary/openLibraryRecommender.ts` — fetch engines
-5. `screens/recommenders/finalRecommender.ts` — quality/ranking choke point
+1. `screens/SwipeDeckScreen.tsx` — main runtime orchestrator
+2. `data/swipeDecks/*` — real swipe deck source
+3. `screens/recommenders/recommenderRouter.ts` — engine merge/router boundary
+4. `screens/recommenders/googleBooks/googleBooksRecommender.ts` / `openLibraryRecommender.ts` / `kitsuMangaRecommender.ts` / `gcdGraphicNovelRecommender.ts` — source fetchers
+5. `screens/recommenders/finalRecommender.ts` — final ranking choke point
 6. `screens/recommenders/taste/*` — personalization layer
-7. `app/(tabs)/index.tsx` and `app/app_admin-web.tsx` — admin/config shell
-8. `data/tagNormalizationMap.ts` — vocabulary control
+7. `app/(tabs)/index.tsx` and `app/app_admin-web.tsx` — config/admin surfaces
+8. `app/api/config/[libraryId]/+api.ts` + `app/c/[libraryId].tsx` — hosted-library proof of concept
+9. `data/tagNormalizationMap.ts` — vocabulary control
 
