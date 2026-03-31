@@ -24,19 +24,18 @@ function buildFallbackQueries(baseQuery: string): string[] {
   };
 
   add(baseQuery);
-  const parts = String(baseQuery || "").split("||").map((part) => part.trim()).filter(Boolean);
-  const primary = parts[0] || "";
-  const fallback = parts[1] || "subject:fiction";
-  const primaryTokens = primary.split(/\s+/).map((token) => token.trim()).filter(Boolean);
+  const primaryTokens = String(baseQuery || "")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 
   for (let i = primaryTokens.length - 1; i >= Math.max(2, primaryTokens.length - 4); i -= 1) {
     add(primaryTokens.slice(0, i).join(" "));
   }
 
-  add(fallback);
+  add("subject:fiction");
   return out;
 }
-
 function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode"] {
   return deckKey === "k2" ? "chapterMiddle" : "default";
 }
