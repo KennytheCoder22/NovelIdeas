@@ -1,6 +1,6 @@
 // /data/swipeDecks/ms_hs.ts
 // Canonical Teen (MS/HS) swipe deck.
-// Normalized against semanticTraitRegistry.ts and tagNormalizationMap.ts.
+// Fully canonical rewrite aligned to the expanded semanticTraitRegistry.ts and tagNormalizationMap.ts.
 
 import type { SwipeDeck } from "./types";
 
@@ -183,7 +183,7 @@ const CANON_MSHS_ANIME: any[] = [
 const msHsDeck: SwipeDeck = {
   deckKey: "ms_hs",
   deckLabel: "Teens School",
-  version: 1,
+  version: 2,
   rules: {
     targetSwipesBeforeRecommend: 12,
     allowUpToSwipesBeforeRecommend: 15,
