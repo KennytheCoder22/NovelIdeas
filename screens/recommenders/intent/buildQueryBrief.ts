@@ -55,11 +55,12 @@ function compareAnchorCandidates(a: AnchorCandidate, b: AnchorCandidate): number
     return aIsGenre ? 1 : -1;
   }
 
+  if (a.score !== b.score) return b.score - a.score;
+
   if (PRIORITY_ORDER[a.type] !== PRIORITY_ORDER[b.type]) {
     return PRIORITY_ORDER[b.type] - PRIORITY_ORDER[a.type];
   }
 
-  if (a.score !== b.score) return b.score - a.score;
   return a.value.localeCompare(b.value);
 }
 
@@ -114,7 +115,11 @@ function buildAnchorCandidates(intent: IntentProfile): AnchorCandidate[] {
 
   return [
     ...(protagonistAnchor ? [{ value: protagonistAnchor, type: "protagonist" as const, score: 1 }] : []),
-    ...(toneAnchor ? [{ value: toneAnchor, type: "tone" as const, score: 0.95 }] : []),
+    ...(toneAnchor ? [{
+      value: toneAnchor,
+      type: "tone" as const,
+      score: toneAnchor === "dark" ? 0.72 : 0.9,
+    }] : []),
     ...intent.thematicAnchors.map((value, index) => ({
       value,
       type: "thematic" as const,
@@ -126,6 +131,15 @@ function buildAnchorCandidates(intent: IntentProfile): AnchorCandidate[] {
       score: getAnchorScore(intent, "genre", value, Math.max(0.2, 0.85 - index * 0.1)),
     })),
   ].filter((candidate) => Boolean(candidate.value));
+}
+
+function findNextDistinctAnchor(selected: AnchorCandidate[], candidates: AnchorCandidate[]): AnchorCandidate | undefined {
+  return candidates.find((candidate) => {
+    if (!candidate.value || WEAK_ANCHORS.has(candidate.value)) return false;
+    if (selected.some((existing) => overlaps(existing.value, candidate.value))) return false;
+    if (selected.some((existing) => existing.value === candidate.value && existing.type === candidate.type)) return false;
+    return true;
+  });
 }
 
 function selectAnchors(intent: IntentProfile): { selected: string[]; enforcedNonGenre: string[] } {
@@ -144,13 +158,18 @@ function selectAnchors(intent: IntentProfile): { selected: string[]; enforcedNon
   if (!selected.some((candidate) => RETRIEVAL_SAFE.has(candidate.value))) {
     const safeGenre = intent.genreAnchors.find((value) => RETRIEVAL_SAFE.has(value));
     if (safeGenre) {
+      const safeGenreCandidate = {
+        value: safeGenre,
+        type: "genre" as const,
+        score: getAnchorScore(intent, "genre", safeGenre, 0.5),
+      };
       const replacementIndex = selected.findIndex((candidate) => candidate.type === "genre");
       if (replacementIndex >= 0) {
-        selected[replacementIndex] = { value: safeGenre, type: "genre", score: getAnchorScore(intent, "genre", safeGenre, 0.5) };
+        selected[replacementIndex] = safeGenreCandidate;
       } else if (selected.length < 2) {
-        selected.push({ value: safeGenre, type: "genre", score: getAnchorScore(intent, "genre", safeGenre, 0.5) });
+        selected.push(safeGenreCandidate);
       } else {
-        selected[selected.length - 1] = { value: safeGenre, type: "genre", score: getAnchorScore(intent, "genre", safeGenre, 0.5) };
+        selected[selected.length - 1] = safeGenreCandidate;
       }
     }
   }
@@ -162,6 +181,15 @@ function selectAnchors(intent: IntentProfile): { selected: string[]; enforcedNon
     if (WEAK_ANCHORS.has(candidate.value)) continue;
     if (selected.some((existing) => overlaps(existing.value, candidate.value))) continue;
     selected.push(candidate);
+  }
+
+  if (selected.length === 1) {
+    const retrievalSafeFallbacks = fallbackCandidates.filter((candidate) => RETRIEVAL_SAFE.has(candidate.value));
+    const forcedSecond =
+      findNextDistinctAnchor(selected, retrievalSafeFallbacks) ||
+      findNextDistinctAnchor(selected, fallbackCandidates);
+
+    if (forcedSecond) selected.push(forcedSecond);
   }
 
   const finalSelected = selected.slice(0, 2);
