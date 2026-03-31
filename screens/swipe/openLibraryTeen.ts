@@ -127,11 +127,11 @@ export function buildFinalQueryTeen(tagCounts: TagCounts): string {
   if (mangaWeight >= 4) {
     // Visual-dominant mode: prioritize manga / graphic novel retrieval first.
     return swipeTerms
-      ? `${teenFormatExpansion} ${swipeTerms} ${teenThemeExpansion} || subject:fiction ${swipeTerms}`.trim()
-      : `${teenFormatExpansion} ${teenThemeExpansion} || subject:fiction`.trim();
+      ? `${teenFormatExpansion} ${swipeTerms} ${teenThemeExpansion} OR subject:fiction OR ${swipeTerms}`.trim()
+      : `${teenFormatExpansion} ${teenThemeExpansion} OR subject:fiction`.trim();
   }
 
   return swipeTerms
     ? `${proseGuardrail} ${swipeTerms} ${teenThemeExpansion} ${fallbackBlock} || subject:fiction ${teenFormatExpansion}`.trim()
-    : `${proseGuardrail} ${teenThemeExpansion} ${fallbackBlock} || subject:fiction ${teenFormatExpansion}`.trim();
+    : `${proseGuardrail} ${teenThemeExpansion} ${fallbackBlock} OR subject:fiction OR ${teenFormatExpansion}`.trim();
 }

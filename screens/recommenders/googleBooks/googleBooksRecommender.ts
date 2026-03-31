@@ -24,10 +24,7 @@ function buildFallbackQueries(baseQuery: string): string[] {
   };
 
   add(baseQuery);
-  const primaryTokens = String(baseQuery || "")
-    .split(/\s+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
+  const primaryTokens = String(baseQuery || "").split(/\s+/).map((token) => token.trim()).filter(Boolean);
 
   for (let i = primaryTokens.length - 1; i >= Math.max(2, primaryTokens.length - 4); i -= 1) {
     add(primaryTokens.slice(0, i).join(" "));
@@ -36,6 +33,7 @@ function buildFallbackQueries(baseQuery: string): string[] {
   add("subject:fiction");
   return out;
 }
+
 function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode"] {
   return deckKey === "k2" ? "chapterMiddle" : "default";
 }
