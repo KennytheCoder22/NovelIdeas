@@ -57,6 +57,13 @@ function compareAnchorCandidates(a: AnchorCandidate, b: AnchorCandidate): number
 
   if (a.score !== b.score) return b.score - a.score;
 
+  if (
+    (a.type === "thematic" && b.type === "tone" && a.score >= b.score - 0.08) ||
+    (b.type === "thematic" && a.type === "tone" && b.score >= a.score - 0.08)
+  ) {
+    return a.type === "thematic" ? -1 : 1;
+  }
+
   if (PRIORITY_ORDER[a.type] !== PRIORITY_ORDER[b.type]) {
     return PRIORITY_ORDER[b.type] - PRIORITY_ORDER[a.type];
   }
@@ -118,13 +125,29 @@ function buildAnchorCandidates(intent: IntentProfile): AnchorCandidate[] {
     ...(toneAnchor ? [{
       value: toneAnchor,
       type: "tone" as const,
-      score: toneAnchor === "dark" ? 0.72 : 0.9,
+      score:
+        intent.audience === "teen"
+          ? (toneAnchor === "dark" ? 0.56 : 0.82)
+          : (toneAnchor === "dark" ? 0.72 : 0.9),
     }] : []),
-    ...intent.thematicAnchors.map((value, index) => ({
-      value,
-      type: "thematic" as const,
-      score: getAnchorScore(intent, "thematic", value, Math.max(0.2, 0.9 - index * 0.1)),
-    })),
+    ...intent.thematicAnchors.map((value, index) => {
+      const normalized = String(value || "").trim().toLowerCase();
+      const teenBoost =
+        intent.audience === "teen" && (
+          normalized === "psychological" ||
+          normalized === "speculative" ||
+          normalized === "survival" ||
+          normalized === "coming of age" ||
+          normalized === "friendship"
+        )
+          ? 0.08
+          : 0;
+      return {
+        value,
+        type: "thematic" as const,
+        score: getAnchorScore(intent, "thematic", value, Math.max(0.2, 0.9 - index * 0.1)) + teenBoost,
+      };
+    }),
     ...intent.genreAnchors.map((value, index) => ({
       value,
       type: "genre" as const,

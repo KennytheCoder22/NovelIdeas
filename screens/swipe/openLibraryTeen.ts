@@ -71,7 +71,7 @@ function stripAgeMarkers(tagCounts: TagCounts): TagCounts {
 
 // Teen final query starts with guardrails, followed by swipe terms.
 export function buildFinalQueryTeen(tagCounts: TagCounts): string {
-  const guardrail = 'subject:fiction subject:"Young Adult Fiction"';
+  const guardrail = 'subject:"Young Adult Fiction" subject:fiction';
   const cleaned = stripAgeMarkers(tagCounts);
 
   const swipeTermsRaw = buildSwipeTermsQueryFromTagCounts(cleaned, tagToKeywordsTeen).trim();
@@ -89,7 +89,7 @@ export function buildFinalQueryTeen(tagCounts: TagCounts): string {
   }
   // --- end patch ---
 
-  const teenThemeExpansion = ['"coming of age"', "identity", "friendship", "relationships"].join(" ");
+  const teenThemeExpansion = ['"coming of age"', "friendship", '"found family"', "identity", "relationships"].join(" ");
 
   const mangaWeight =
     Number(cleaned["topic:manga"] || 0) +
@@ -121,8 +121,8 @@ export function buildFinalQueryTeen(tagCounts: TagCounts): string {
     mangaWeight >= 4
       ? ""
       : mangaWeight >= 2
-        ? '|| subject:fiction subject:"young adult fiction"'
-        : '|| subject:"young adult fiction" subject:"juvenile fiction" subject:fiction subject:"adventure" subject:"fantasy"';
+        ? '|| subject:"young adult fiction" subject:fiction subject:mystery subject:adventure'
+        : '|| subject:"young adult fiction" subject:"juvenile fiction" subject:fiction subject:mystery subject:adventure subject:fantasy';
 
   if (mangaWeight >= 4) {
     // Visual-dominant mode: prioritize manga / graphic novel retrieval first.
@@ -132,6 +132,6 @@ export function buildFinalQueryTeen(tagCounts: TagCounts): string {
   }
 
   return swipeTerms
-    ? `${proseGuardrail} ${swipeTerms} ${teenThemeExpansion} ${fallbackBlock} || subject:fiction ${teenFormatExpansion}`.trim()
+    ? `${proseGuardrail} ${teenThemeExpansion} ${swipeTerms} ${fallbackBlock} || subject:fiction ${teenFormatExpansion}`.trim()
     : `${proseGuardrail} ${teenThemeExpansion} ${fallbackBlock} || subject:fiction ${teenFormatExpansion}`.trim();
 }

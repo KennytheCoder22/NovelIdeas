@@ -330,6 +330,34 @@ function applyAnchorCompetitionRules(candidates: Candidate[], tagCounts?: TagCou
 }
 
 
+function applyTeenAudienceBias(candidates: Candidate[], tagCounts?: TagCounts, axes?: TasteAxes): Candidate[] {
+  const ideaDensity = Number(axes?.ideaDensity || 0);
+  const darkness = Number(axes?.darkness || 0);
+  const mysterySignal = Number(scoreMatches(["mystery", "thriller", "crime", "investigation"], tagCounts || {}));
+  const socialSignal = Number(scoreMatches(["coming of age", "friendship", "family", "identity", "belonging"], tagCounts || {}));
+
+  adjustCandidate(candidates, "thematicAnchor", "dark", darkness >= 0.2 ? -0.2 : -0.3);
+  adjustCandidate(candidates, "tonePreference", "dark", -0.15);
+
+  if (mysterySignal >= 2) {
+    bumpCandidate(candidates, "thematicAnchor", "psychological", ideaDensity >= 0.2 ? 0.35 : 0.2, "co_signal");
+    bumpCandidate(candidates, "genreAnchor", "mystery", 0.12, "co_signal");
+  }
+
+  if (socialSignal >= 1.5) {
+    bumpCandidate(candidates, "thematicAnchor", "coming of age", 0.22, "co_signal");
+    bumpCandidate(candidates, "thematicAnchor", "friendship", 0.18, "co_signal");
+  }
+
+  if (Number(scoreMatches(["survival", "rebellion", "dystopian", "quest"], tagCounts || {})) >= 1.5) {
+    bumpCandidate(candidates, "thematicAnchor", "survival", 0.16, "co_signal");
+    bumpCandidate(candidates, "genreAnchor", "adventure", 0.1, "co_signal");
+  }
+
+  return candidates;
+}
+
+
 function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes, tagCounts?: TagCounts): Candidate[] {
   if (!axes) return candidates;
 
@@ -351,19 +379,27 @@ function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes, tagCounts
   const reduce = (value: string, delta: number): Candidate[] =>
     adjustCandidate(candidates, "genreAnchor", value, -Math.abs(delta));
 
-  if (ideaDensity >= 0.2) {
-    bumpCandidate(candidates, "thematicAnchor", "thoughtful", 0.35, "axis");
-    bumpCandidate(candidates, "thematicAnchor", "psychological", 0.15, "axis");
-    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.25, "axis");
-  }
+  const hasSciFiContext = (): boolean =>
+    hasGenre("science fiction") || hasStrongCandidate(candidates, "speculative", 0.25) || hasTag("ai") || hasTag("cyberpunk");
+
+  const hasMysteryContext = (): boolean =>
+    hasGenre("mystery") || hasGenre("thriller");
 
   if (ideaDensity >= 0.5) {
-    if (hasGenre("science fiction") || hasTag("ai") || hasTag("cyberpunk")) {
+    if (hasSciFiContext()) {
       boostOrCreate("speculative", 0.7);
-    } else if (hasGenre("mystery") || hasGenre("thriller")) {
+    } else if (hasMysteryContext()) {
       boostOrCreate("psychological", 0.6);
     } else {
       boostOrCreate("thoughtful", 0.5);
+    }
+  } else if (ideaDensity >= 0.2) {
+    if (hasMysteryContext()) {
+      boostOrCreate("psychological", 0.45);
+    } else if (hasSciFiContext()) {
+      boostOrCreate("speculative", 0.45);
+    } else {
+      boostOrCreate("thoughtful", 0.35);
     }
   }
 
@@ -562,20 +598,48 @@ function pickAnchors(candidates: Candidate[], type: "genreAnchor" | "thematicAnc
     .map((candidate) => candidate.value);
 }
 
+function collectAnchorScores(candidates: Candidate[]): { genre: Record<string, number>; thematic: Record<string, number> } {
+  const genre: Record<string, number> = {};
+  const thematic: Record<string, number> = {};
+
+  for (const candidate of candidates) {
+    const key = normalizeKey(candidate.value);
+    if (candidate.type === "genreAnchor") genre[key] = candidate.score;
+    if (candidate.type === "thematicAnchor") thematic[key] = candidate.score;
+  }
+
+  return { genre, thematic };
+}
+
 export function buildIntentProfile(input: BuildIntentProfileInput): IntentProfile {
   const audience = audienceFromDeckKey(input.deckKey);
   const tagCounts = input.tagCounts || {};
 
   const candidates = normalizeAndRankCandidates(
-    applyAnchorCompetitionRules(
-      runCoSignalRouting(
-        applyAxisModifiers(generateBaseCandidates(tagCounts), input.tasteProfile?.axes, tagCounts),
-        input.tasteProfile?.axes,
-        tagCounts
-      ),
-      tagCounts
-    )
+    audience === "teen"
+      ? applyTeenAudienceBias(
+          applyAnchorCompetitionRules(
+            runCoSignalRouting(
+              applyAxisModifiers(generateBaseCandidates(tagCounts), input.tasteProfile?.axes, tagCounts),
+              input.tasteProfile?.axes,
+              tagCounts
+            ),
+            tagCounts
+          ),
+          tagCounts,
+          input.tasteProfile?.axes
+        )
+      : applyAnchorCompetitionRules(
+          runCoSignalRouting(
+            applyAxisModifiers(generateBaseCandidates(tagCounts), input.tasteProfile?.axes, tagCounts),
+            input.tasteProfile?.axes,
+            tagCounts
+          ),
+          tagCounts
+        )
   );
+
+  const anchorScores = collectAnchorScores(candidates);
 
   const storyMode = pickTopByType<NonNullable<IntentProfile["storyMode"]>>(candidates, "storyMode", 0.25);
   const protagonistPreference = pickTopByType<NonNullable<IntentProfile["protagonistPreference"]>>(
@@ -600,8 +664,8 @@ export function buildIntentProfile(input: BuildIntentProfileInput): IntentProfil
     0.2
   );
   const formatBias = pickTopByType<NonNullable<IntentProfile["formatBias"]>>(candidates, "formatBias", 0.2);
-  const genreAnchors = pickAnchors(candidates, "genreAnchor", 3, 0.18);
-  const thematicAnchors = pickAnchors(candidates, "thematicAnchor", 3, 0.18);
+  const genreAnchors = pickAnchors(candidates, "genreAnchor", 2, 0.18);
+  const thematicAnchors = pickAnchors(candidates, "thematicAnchor", 2, 0.18);
 
   const queryGuards = chooseQueryGuards(
     {
@@ -640,5 +704,6 @@ export function buildIntentProfile(input: BuildIntentProfileInput): IntentProfil
     thematicAnchors,
     queryGuards,
     retrievalConfidence: retrievalConfidence(tagCounts, selectedCount, input.tasteProfile?.confidence),
-  };
+    anchorScores,
+  } as IntentProfile;
 }
