@@ -63,7 +63,8 @@ function buildBriefDrivenQuery(input: BuildFinalQueryInput): string {
     ...secondaryAnchors,
   ]);
 
-  const query = unique([...baseAudience, ...anchors]).slice(0, 5).join(" ").trim();
+  const audienceAnchor = baseAudience[0] || 'subject:fiction';
+  const query = unique([audienceAnchor, ...anchors.slice(0, 2)]).join(" ").trim();
 
   if (query) return query;
 

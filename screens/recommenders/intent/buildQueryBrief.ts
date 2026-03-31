@@ -5,6 +5,7 @@ type AnchorType = "protagonist" | "tone" | "thematic" | "genre";
 type AnchorCandidate = {
   value: string;
   type: AnchorType;
+  score: number;
 };
 
 const PRIORITY_ORDER: Record<AnchorType, number> = {
@@ -38,6 +39,29 @@ const OVERLAP_GROUPS: string[][] = [
   ["dark", "bleak", "grim"],
   ["character-driven", "identity"],
 ];
+
+function getAnchorScore(intent: IntentProfile, type: "genre" | "thematic", value: string, fallback: number): number {
+  const scoreMap = ((intent as any)?.anchorScores?.[type] || {}) as Record<string, number>;
+  const normalized = String(value || "").trim().toLowerCase();
+  const score = Number(scoreMap[normalized]);
+  return Number.isFinite(score) ? score : fallback;
+}
+
+function compareAnchorCandidates(a: AnchorCandidate, b: AnchorCandidate): number {
+  const aIsGenre = a.type === "genre";
+  const bIsGenre = b.type === "genre";
+
+  if (aIsGenre !== bIsGenre && Math.abs(a.score - b.score) <= 0.15) {
+    return aIsGenre ? 1 : -1;
+  }
+
+  if (PRIORITY_ORDER[a.type] !== PRIORITY_ORDER[b.type]) {
+    return PRIORITY_ORDER[b.type] - PRIORITY_ORDER[a.type];
+  }
+
+  if (a.score !== b.score) return b.score - a.score;
+  return a.value.localeCompare(b.value);
+}
 
 function protagonistToQueryAnchor(value: IntentProfile["protagonistPreference"]): string | undefined {
   switch (value) {
@@ -89,17 +113,25 @@ function buildAnchorCandidates(intent: IntentProfile): AnchorCandidate[] {
   const toneAnchor = toneToQueryAnchor(intent.tonePreference);
 
   return [
-    ...(protagonistAnchor ? [{ value: protagonistAnchor, type: "protagonist" as const }] : []),
-    ...(toneAnchor ? [{ value: toneAnchor, type: "tone" as const }] : []),
-    ...intent.thematicAnchors.map((value) => ({ value, type: "thematic" as const })),
-    ...intent.genreAnchors.map((value) => ({ value, type: "genre" as const })),
+    ...(protagonistAnchor ? [{ value: protagonistAnchor, type: "protagonist" as const, score: 1 }] : []),
+    ...(toneAnchor ? [{ value: toneAnchor, type: "tone" as const, score: 0.95 }] : []),
+    ...intent.thematicAnchors.map((value, index) => ({
+      value,
+      type: "thematic" as const,
+      score: getAnchorScore(intent, "thematic", value, Math.max(0.2, 0.9 - index * 0.1)),
+    })),
+    ...intent.genreAnchors.map((value, index) => ({
+      value,
+      type: "genre" as const,
+      score: getAnchorScore(intent, "genre", value, Math.max(0.2, 0.85 - index * 0.1)),
+    })),
   ].filter((candidate) => Boolean(candidate.value));
 }
 
 function selectAnchors(intent: IntentProfile): { selected: string[]; enforcedNonGenre: string[] } {
   const candidates = buildAnchorCandidates(intent)
     .filter((candidate) => candidate.value && !WEAK_ANCHORS.has(candidate.value))
-    .sort((a, b) => PRIORITY_ORDER[b.type] - PRIORITY_ORDER[a.type]);
+    .sort(compareAnchorCandidates);
 
   const selected: AnchorCandidate[] = [];
 
@@ -114,18 +146,16 @@ function selectAnchors(intent: IntentProfile): { selected: string[]; enforcedNon
     if (safeGenre) {
       const replacementIndex = selected.findIndex((candidate) => candidate.type === "genre");
       if (replacementIndex >= 0) {
-        selected[replacementIndex] = { value: safeGenre, type: "genre" };
+        selected[replacementIndex] = { value: safeGenre, type: "genre", score: getAnchorScore(intent, "genre", safeGenre, 0.5) };
       } else if (selected.length < 2) {
-        selected.push({ value: safeGenre, type: "genre" });
+        selected.push({ value: safeGenre, type: "genre", score: getAnchorScore(intent, "genre", safeGenre, 0.5) });
       } else {
-        selected[selected.length - 1] = { value: safeGenre, type: "genre" };
+        selected[selected.length - 1] = { value: safeGenre, type: "genre", score: getAnchorScore(intent, "genre", safeGenre, 0.5) };
       }
     }
   }
 
-  const fallbackCandidates = buildAnchorCandidates(intent).sort(
-    (a, b) => PRIORITY_ORDER[b.type] - PRIORITY_ORDER[a.type]
-  );
+  const fallbackCandidates = buildAnchorCandidates(intent).sort(compareAnchorCandidates);
 
   for (const candidate of fallbackCandidates) {
     if (selected.length >= 2) break;
@@ -166,8 +196,8 @@ export function buildQueryBrief(intent: IntentProfile): QueryBrief & { enforcedN
     audience: intent.audience,
     genreAnchors,
     thematicAnchors: thematicAnchors.slice(0, 2),
-    protagonistAnchor,
-    toneAnchor,
+    protagonistAnchor: protagonistAnchor && selected.includes(protagonistAnchor) ? protagonistAnchor : undefined,
+    toneAnchor: toneAnchor && selected.includes(toneAnchor) ? toneAnchor : undefined,
     formatBias: intent.formatBias as FormatBias | undefined,
     queryGuards: intent.queryGuards.slice(0, 2),
     confidence,
