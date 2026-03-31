@@ -26,6 +26,44 @@ type BuildIntentProfileInput = {
 
 type Scored<T extends string> = { value: T; score: number };
 
+type CandidateType =
+  | "storyMode"
+  | "protagonistPreference"
+  | "tonePreference"
+  | "intensityPreference"
+  | "complexityPreference"
+  | "relationshipPreference"
+  | "formatBias"
+  | "genreAnchor"
+  | "thematicAnchor";
+
+type Candidate = {
+  type: CandidateType;
+  value: string;
+  score: number;
+  source: "tags" | "axis" | "co_signal";
+  retrievalSafe?: boolean;
+};
+
+const RETRIEVAL_SAFE_ANCHORS = new Set([
+  "mystery",
+  "science fiction",
+  "sci-fi",
+  "fantasy",
+  "adventure",
+  "thriller",
+  "psychological",
+  "speculative",
+  "survival",
+]);
+
+const SEMANTIC_EQUIVALENTS: Record<string, string[]> = {
+  psychological: ["thoughtful"],
+  "science fiction": ["speculative", "sci-fi"],
+  speculative: ["science fiction", "sci-fi"],
+  dark: ["bleak"],
+};
+
 function audienceFromDeckKey(deckKey: string): AudienceBand {
   if (deckKey === "k2" || deckKey === "kids" || deckKey === "k-2") return "kids";
   if (deckKey === "36" || deckKey === "3-6") return "preteen";
@@ -62,25 +100,6 @@ function chooseTop<T extends string>(scored: Scored<T>[], minScore = 0.75): T | 
   return sorted[0].value;
 }
 
-function chooseGenreAnchors(tagCounts: TagCounts, max = 3): string[] {
-  return Object.entries(tagCounts || {})
-    .filter(([k, v]) => Number(v) > 0 && GENRE_TO_ANCHOR[k])
-    .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .map(([k]) => GENRE_TO_ANCHOR[k])
-    .filter((v, i, arr) => arr.indexOf(v) === i)
-    .slice(0, max);
-}
-
-function chooseThematicAnchors(tagCounts: TagCounts, max = 3): string[] {
-  return Object.entries(THEMATIC_ANCHOR_MAP)
-    .map(([raw, mapped]) => ({ mapped, score: scoreMatches([raw], tagCounts) }))
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .map((x) => x.mapped)
-    .filter((v, i, arr) => arr.indexOf(v) === i)
-    .slice(0, max);
-}
-
 function chooseStoryMode(tagCounts: TagCounts): IntentProfile["storyMode"] | undefined {
   const scored = Object.entries(STORY_MODE_SIGNALS).map(([mode, cfg]) => ({
     value: mode as NonNullable<IntentProfile["storyMode"]>,
@@ -108,7 +127,11 @@ function chooseProtagonistPreference(tagCounts: TagCounts): IntentProfile["prota
   return topOther && topOther.score >= 1 ? topOther.value : undefined;
 }
 
-function chooseEnumFromSignals<T extends string>(signalMap: Record<T, readonly string[]>, tagCounts: TagCounts, minScore = 1): T | undefined {
+function chooseEnumFromSignals<T extends string>(
+  signalMap: Record<T, readonly string[]>,
+  tagCounts: TagCounts,
+  minScore = 1
+): T | undefined {
   const scored = (Object.keys(signalMap) as T[]).map((key) => ({ value: key, score: scoreMatches(signalMap[key], tagCounts) }));
   return chooseTop(scored, minScore);
 }
@@ -169,25 +192,298 @@ function retrievalConfidence(tagCounts: TagCounts, selectedCount: number, tasteC
   return Math.max(0, Math.min(1, base + structure + taste));
 }
 
+function isRetrievalSafe(value: string): boolean {
+  return RETRIEVAL_SAFE_ANCHORS.has(normalizeKey(value));
+}
+
+function scoreGenreAnchors(tagCounts: TagCounts, max = 6): Scored<string>[] {
+  return Object.entries(tagCounts || {})
+    .filter(([k, v]) => Number(v) > 0 && GENRE_TO_ANCHOR[k])
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([k, v]) => ({ value: GENRE_TO_ANCHOR[k], score: Number(v) || 0 }))
+    .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
+    .slice(0, max);
+}
+
+function scoreThematicAnchors(tagCounts: TagCounts, max = 6): Scored<string>[] {
+  return Object.entries(THEMATIC_ANCHOR_MAP)
+    .map(([raw, mapped]) => ({ value: mapped, score: scoreMatches([raw], tagCounts) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
+    .slice(0, max);
+}
+
+function generateBaseCandidates(tagCounts: TagCounts): Candidate[] {
+  const candidates: Candidate[] = [];
+
+  const storyMode = chooseStoryMode(tagCounts);
+  if (storyMode) candidates.push({ type: "storyMode", value: storyMode, score: 1.2, source: "tags" });
+
+  const protagonistPreference = chooseProtagonistPreference(tagCounts);
+  if (protagonistPreference) {
+    candidates.push({ type: "protagonistPreference", value: protagonistPreference, score: 1.1, source: "tags" });
+  }
+
+  const tonePreference = chooseEnumFromSignals(TONE_SIGNALS, tagCounts, 1);
+  if (tonePreference) candidates.push({ type: "tonePreference", value: tonePreference, score: 1.0, source: "tags" });
+
+  const intensityPreference = chooseEnumFromSignals(INTENSITY_SIGNALS, tagCounts, 1);
+  if (intensityPreference) {
+    candidates.push({ type: "intensityPreference", value: intensityPreference, score: 1.0, source: "tags" });
+  }
+
+  const complexityPreference = chooseEnumFromSignals(COMPLEXITY_SIGNALS, tagCounts, 0.8);
+  if (complexityPreference) {
+    candidates.push({ type: "complexityPreference", value: complexityPreference, score: 0.9, source: "tags" });
+  }
+
+  const relationshipPreference = chooseEnumFromSignals(RELATIONSHIP_SIGNALS, tagCounts, 0.8);
+  if (relationshipPreference) {
+    candidates.push({ type: "relationshipPreference", value: relationshipPreference, score: 0.9, source: "tags" });
+  }
+
+  const formatBias = chooseFormatBias(tagCounts);
+  if (formatBias) candidates.push({ type: "formatBias", value: formatBias, score: 0.8, source: "tags" });
+
+  for (const anchor of scoreGenreAnchors(tagCounts)) {
+    candidates.push({
+      type: "genreAnchor",
+      value: anchor.value,
+      score: anchor.score,
+      source: "tags",
+      retrievalSafe: isRetrievalSafe(anchor.value),
+    });
+  }
+
+  for (const anchor of scoreThematicAnchors(tagCounts)) {
+    candidates.push({
+      type: "thematicAnchor",
+      value: anchor.value,
+      score: anchor.score,
+      source: "tags",
+      retrievalSafe: isRetrievalSafe(anchor.value),
+    });
+  }
+
+  return candidates;
+}
+
+function bumpCandidate(candidates: Candidate[], type: CandidateType, value: string, delta: number, source: Candidate["source"]): Candidate[] {
+  const normalizedValue = normalizeKey(value);
+  const existing = candidates.find((candidate) => candidate.type === type && normalizeKey(candidate.value) === normalizedValue);
+  if (existing) {
+    existing.score += delta;
+    return candidates;
+  }
+  candidates.push({
+    type,
+    value,
+    score: Math.max(0, delta),
+    source,
+    retrievalSafe: type === "genreAnchor" || type === "thematicAnchor" ? isRetrievalSafe(value) : undefined,
+  });
+  return candidates;
+}
+
+function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes): Candidate[] {
+  if (!axes) return candidates;
+
+  const ideaDensity = Number(axes.ideaDensity || 0);
+  const realism = Number(axes.realism || 0);
+  const humor = Number(axes.humor || 0);
+  const pacing = Number(axes.pacing || 0);
+  const darkness = Number(axes.darkness || 0);
+
+  if (ideaDensity >= 0.2) {
+    bumpCandidate(candidates, "thematicAnchor", "thoughtful", 0.35, "axis");
+    bumpCandidate(candidates, "thematicAnchor", "psychological", 0.15, "axis");
+    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.15, "axis");
+  }
+
+  if (realism <= -0.2) {
+    for (const candidate of candidates) {
+      if (normalizeKey(candidate.value) === "realism") candidate.score -= 0.4;
+    }
+    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.1, "axis");
+  }
+
+  if (darkness >= 0.15) {
+    bumpCandidate(candidates, "thematicAnchor", "dark", 0.35, "axis");
+  }
+
+  if (humor >= 0.25) {
+    bumpCandidate(candidates, "tonePreference", "playful", 0.3, "axis");
+    bumpCandidate(candidates, "thematicAnchor", "ironic", 0.2, "axis");
+  }
+
+  if (pacing >= 0.2) {
+    bumpCandidate(candidates, "genreAnchor", "adventure", 0.3, "axis");
+    bumpCandidate(candidates, "genreAnchor", "thriller", 0.25, "axis");
+    bumpCandidate(candidates, "thematicAnchor", "survival", 0.25, "axis");
+  }
+
+  return candidates;
+}
+
+function hasStrongCandidate(candidates: Candidate[], value: string, minScore = 0.8): boolean {
+  const normalizedValue = normalizeKey(value);
+  return candidates.some((candidate) => normalizeKey(candidate.value) === normalizedValue && candidate.score >= minScore);
+}
+
+function runCoSignalRouting(candidates: Candidate[], axes?: TasteAxes): Candidate[] {
+  if (!axes) return candidates;
+
+  const ideaDensity = Number(axes.ideaDensity || 0);
+  const realism = Number(axes.realism || 0);
+  const darkness = Number(axes.darkness || 0);
+  const humor = Number(axes.humor || 0);
+  const pacing = Number(axes.pacing || 0);
+
+  if (ideaDensity >= 0.2) {
+    if (hasStrongCandidate(candidates, "mystery") || hasStrongCandidate(candidates, "thriller")) {
+      bumpCandidate(candidates, "thematicAnchor", "psychological", 0.45, "co_signal");
+    } else if (hasStrongCandidate(candidates, "science fiction") || hasStrongCandidate(candidates, "speculative")) {
+      bumpCandidate(candidates, "thematicAnchor", "speculative", 0.45, "co_signal");
+    } else {
+      bumpCandidate(candidates, "thematicAnchor", "thoughtful", 0.35, "co_signal");
+    }
+  }
+
+  if (realism <= -0.2 && (hasStrongCandidate(candidates, "science fiction") || hasStrongCandidate(candidates, "fantasy"))) {
+    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.25, "co_signal");
+  }
+
+  if (darkness >= 0.15 && !hasStrongCandidate(candidates, "horror")) {
+    bumpCandidate(candidates, "thematicAnchor", "dark", 0.25, "co_signal");
+  }
+
+  if (humor >= 0.25 && !hasStrongCandidate(candidates, "dark", 1.0)) {
+    bumpCandidate(candidates, "tonePreference", "playful", 0.15, "co_signal");
+  }
+
+  if (pacing >= 0.2) {
+    if (!hasStrongCandidate(candidates, "adventure")) bumpCandidate(candidates, "genreAnchor", "adventure", 0.2, "co_signal");
+    if (!hasStrongCandidate(candidates, "survival")) bumpCandidate(candidates, "thematicAnchor", "survival", 0.2, "co_signal");
+  }
+
+  return candidates;
+}
+
+function betterCandidate(a: Candidate, b: Candidate): Candidate {
+  if (a.score !== b.score) return a.score > b.score ? a : b;
+  const aSafe = a.retrievalSafe ? 1 : 0;
+  const bSafe = b.retrievalSafe ? 1 : 0;
+  if (aSafe !== bSafe) return aSafe > bSafe ? a : b;
+  return normalizeKey(a.value) <= normalizeKey(b.value) ? a : b;
+}
+
+function normalizeAndRankCandidates(candidates: Candidate[]): Candidate[] {
+  const byTypeAndValue = new Map<string, Candidate>();
+
+  for (const candidate of candidates) {
+    if (candidate.score <= 0) continue;
+    const key = `${candidate.type}::${normalizeKey(candidate.value)}`;
+    const existing = byTypeAndValue.get(key);
+    if (!existing) {
+      byTypeAndValue.set(key, { ...candidate });
+      continue;
+    }
+    existing.score += candidate.score;
+    existing.retrievalSafe = existing.retrievalSafe || candidate.retrievalSafe;
+  }
+
+  const merged = Array.from(byTypeAndValue.values());
+  const filtered: Candidate[] = [];
+
+  for (const candidate of merged.sort((a, b) => b.score - a.score || a.value.localeCompare(b.value))) {
+    const equivalent = filtered.find((existing) => {
+      if (existing.type !== candidate.type) return false;
+      const normalizedExisting = normalizeKey(existing.value);
+      const normalizedCandidate = normalizeKey(candidate.value);
+      return normalizedExisting === normalizedCandidate || (SEMANTIC_EQUIVALENTS[normalizedExisting] || []).includes(normalizedCandidate) || (SEMANTIC_EQUIVALENTS[normalizedCandidate] || []).includes(normalizedExisting);
+    });
+
+    if (!equivalent) {
+      filtered.push(candidate);
+      continue;
+    }
+
+    const winner = betterCandidate(candidate, equivalent);
+    if (winner !== equivalent) {
+      const idx = filtered.indexOf(equivalent);
+      filtered[idx] = winner;
+    }
+  }
+
+  const maxScore = Math.max(...filtered.map((candidate) => candidate.score), 1);
+  return filtered
+    .map((candidate) => ({
+      ...candidate,
+      score: Number((candidate.score / maxScore).toFixed(4)),
+    }))
+    .sort((a, b) => b.score - a.score || a.value.localeCompare(b.value));
+}
+
+function pickTopByType<T extends string>(candidates: Candidate[], type: CandidateType, minScore: number): T | undefined {
+  const scoped = candidates.filter((candidate) => candidate.type === type && candidate.score >= minScore);
+  return scoped.length ? (scoped[0].value as T) : undefined;
+}
+
+function pickAnchors(candidates: Candidate[], type: "genreAnchor" | "thematicAnchor", max: number, minScore: number): string[] {
+  return candidates
+    .filter((candidate) => candidate.type === type && candidate.score >= minScore)
+    .slice(0, max)
+    .map((candidate) => candidate.value);
+}
+
 export function buildIntentProfile(input: BuildIntentProfileInput): IntentProfile {
   const audience = audienceFromDeckKey(input.deckKey);
   const tagCounts = input.tagCounts || {};
-  const storyMode = chooseStoryMode(tagCounts);
-  const protagonistPreference = chooseProtagonistPreference(tagCounts);
-  const tonePreference = chooseEnumFromSignals(TONE_SIGNALS, tagCounts, 1);
-  const intensityPreference = chooseEnumFromSignals(INTENSITY_SIGNALS, tagCounts, 1);
-  const complexityPreference = chooseEnumFromSignals(COMPLEXITY_SIGNALS, tagCounts, 0.8);
-  const relationshipPreference = chooseEnumFromSignals(RELATIONSHIP_SIGNALS, tagCounts, 0.8);
-  const formatBias = chooseFormatBias(tagCounts);
-  const genreAnchors = chooseGenreAnchors(tagCounts, 3);
-  const thematicAnchors = chooseThematicAnchors(tagCounts, 3);
-  const queryGuards = chooseQueryGuards({
-    protagonistPreference,
-    tonePreference,
-    intensityPreference,
-    complexityPreference,
-    relationshipPreference,
-  }, tagCounts);
+
+  const candidates = normalizeAndRankCandidates(
+    runCoSignalRouting(
+      applyAxisModifiers(generateBaseCandidates(tagCounts), input.tasteProfile?.axes),
+      input.tasteProfile?.axes
+    )
+  );
+
+  const storyMode = pickTopByType<NonNullable<IntentProfile["storyMode"]>>(candidates, "storyMode", 0.25);
+  const protagonistPreference = pickTopByType<NonNullable<IntentProfile["protagonistPreference"]>>(
+    candidates,
+    "protagonistPreference",
+    0.25
+  );
+  const tonePreference = pickTopByType<NonNullable<IntentProfile["tonePreference"]>>(candidates, "tonePreference", 0.2);
+  const intensityPreference = pickTopByType<NonNullable<IntentProfile["intensityPreference"]>>(
+    candidates,
+    "intensityPreference",
+    0.2
+  );
+  const complexityPreference = pickTopByType<NonNullable<IntentProfile["complexityPreference"]>>(
+    candidates,
+    "complexityPreference",
+    0.2
+  );
+  const relationshipPreference = pickTopByType<NonNullable<IntentProfile["relationshipPreference"]>>(
+    candidates,
+    "relationshipPreference",
+    0.2
+  );
+  const formatBias = pickTopByType<NonNullable<IntentProfile["formatBias"]>>(candidates, "formatBias", 0.2);
+  const genreAnchors = pickAnchors(candidates, "genreAnchor", 3, 0.18);
+  const thematicAnchors = pickAnchors(candidates, "thematicAnchor", 3, 0.18);
+
+  const queryGuards = chooseQueryGuards(
+    {
+      protagonistPreference,
+      tonePreference,
+      intensityPreference,
+      complexityPreference,
+      relationshipPreference,
+    },
+    tagCounts
+  );
 
   const selectedCount = [
     storyMode,
