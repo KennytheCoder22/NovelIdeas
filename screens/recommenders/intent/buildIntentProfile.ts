@@ -1,3 +1,4 @@
+
 import type { TagCounts } from "../openLibraryFromTags";
 import type { IntentProfile, AudienceBand, QueryGuard } from "./types";
 import {
@@ -286,7 +287,27 @@ function bumpCandidate(candidates: Candidate[], type: CandidateType, value: stri
   return candidates;
 }
 
-function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes): Candidate[] {
+
+function hasTagSignal(tagCounts: TagCounts, signals: readonly string[]): boolean {
+  return scoreMatches(signals, tagCounts) > 0;
+}
+
+function adjustCandidate(
+  candidates: Candidate[],
+  type: CandidateType,
+  value: string,
+  delta: number
+): Candidate[] {
+  const normalizedValue = normalizeKey(value);
+  const existing = candidates.find((candidate) => candidate.type === type && normalizeKey(candidate.value) === normalizedValue);
+  if (existing) {
+    existing.score = Math.max(0, existing.score + delta);
+  }
+  return candidates;
+}
+
+
+function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes, tagCounts?: TagCounts): Candidate[] {
   if (!axes) return candidates;
 
   const ideaDensity = Number(axes.ideaDensity || 0);
@@ -295,17 +316,41 @@ function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes): Candidat
   const pacing = Number(axes.pacing || 0);
   const darkness = Number(axes.darkness || 0);
 
+  const hasGenre = (genre: string): boolean =>
+    hasStrongCandidate(candidates, genre, 0.25) || Boolean(tagCounts && hasTagSignal(tagCounts, [genre]));
+
+  const hasTag = (tag: string): boolean =>
+    Boolean(tagCounts && hasTagSignal(tagCounts, [tag]));
+
+  const boostOrCreate = (value: string, delta: number): Candidate[] =>
+    bumpCandidate(candidates, "thematicAnchor", value, delta, "axis");
+
+  const reduce = (value: string, delta: number): Candidate[] =>
+    adjustCandidate(candidates, "genreAnchor", value, -Math.abs(delta));
+
   if (ideaDensity >= 0.2) {
     bumpCandidate(candidates, "thematicAnchor", "thoughtful", 0.35, "axis");
     bumpCandidate(candidates, "thematicAnchor", "psychological", 0.15, "axis");
-    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.15, "axis");
+    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.25, "axis");
+  }
+
+  if (ideaDensity >= 0.5) {
+    if (hasGenre("science fiction") || hasTag("ai") || hasTag("cyberpunk")) {
+      boostOrCreate("speculative", 0.7);
+    } else if (hasGenre("mystery") || hasGenre("thriller")) {
+      boostOrCreate("psychological", 0.6);
+    } else {
+      boostOrCreate("thoughtful", 0.5);
+    }
   }
 
   if (realism <= -0.2) {
-    for (const candidate of candidates) {
-      if (normalizeKey(candidate.value) === "realism") candidate.score -= 0.4;
-    }
+    adjustCandidate(candidates, "thematicAnchor", "realism", -0.4);
     bumpCandidate(candidates, "thematicAnchor", "speculative", 0.1, "axis");
+  }
+
+  if (realism <= -0.5) {
+    boostOrCreate("speculative", 0.6);
   }
 
   if (darkness >= 0.15) {
@@ -318,9 +363,13 @@ function applyAxisModifiers(candidates: Candidate[], axes?: TasteAxes): Candidat
   }
 
   if (pacing >= 0.2) {
-    bumpCandidate(candidates, "genreAnchor", "adventure", 0.3, "axis");
+    if (ideaDensity < 0.5) bumpCandidate(candidates, "genreAnchor", "adventure", 0.3, "axis");
     bumpCandidate(candidates, "genreAnchor", "thriller", 0.25, "axis");
     bumpCandidate(candidates, "thematicAnchor", "survival", 0.25, "axis");
+  }
+
+  if (ideaDensity >= 0.5) {
+    reduce("adventure", 0.4);
   }
 
   return candidates;
@@ -331,7 +380,8 @@ function hasStrongCandidate(candidates: Candidate[], value: string, minScore = 0
   return candidates.some((candidate) => normalizeKey(candidate.value) === normalizedValue && candidate.score >= minScore);
 }
 
-function runCoSignalRouting(candidates: Candidate[], axes?: TasteAxes): Candidate[] {
+
+function runCoSignalRouting(candidates: Candidate[], axes?: TasteAxes, tagCounts?: TagCounts): Candidate[] {
   if (!axes) return candidates;
 
   const ideaDensity = Number(axes.ideaDensity || 0);
@@ -340,18 +390,40 @@ function runCoSignalRouting(candidates: Candidate[], axes?: TasteAxes): Candidat
   const humor = Number(axes.humor || 0);
   const pacing = Number(axes.pacing || 0);
 
-  if (ideaDensity >= 0.2) {
-    if (hasStrongCandidate(candidates, "mystery") || hasStrongCandidate(candidates, "thriller")) {
+  const hasSciFiContext =
+    hasStrongCandidate(candidates, "science fiction", 0.25) ||
+    hasStrongCandidate(candidates, "speculative", 0.25) ||
+    Boolean(tagCounts && hasTagSignal(tagCounts, ["science fiction", "ai", "cyberpunk"]));
+
+  const hasMysteryContext =
+    hasStrongCandidate(candidates, "mystery", 0.25) ||
+    hasStrongCandidate(candidates, "thriller", 0.25) ||
+    Boolean(tagCounts && hasTagSignal(tagCounts, ["mystery", "thriller"]));
+
+  if (ideaDensity >= 0.5) {
+    if (hasSciFiContext) {
+      bumpCandidate(candidates, "thematicAnchor", "speculative", 1.0, "co_signal");
+    } else if (hasMysteryContext) {
+      bumpCandidate(candidates, "thematicAnchor", "psychological", 0.6, "co_signal");
+    } else {
+      bumpCandidate(candidates, "thematicAnchor", "thoughtful", 0.5, "co_signal");
+    }
+  } else if (ideaDensity >= 0.2) {
+    if (hasMysteryContext) {
       bumpCandidate(candidates, "thematicAnchor", "psychological", 0.45, "co_signal");
-    } else if (hasStrongCandidate(candidates, "science fiction") || hasStrongCandidate(candidates, "speculative")) {
+    } else if (hasSciFiContext) {
       bumpCandidate(candidates, "thematicAnchor", "speculative", 0.45, "co_signal");
     } else {
       bumpCandidate(candidates, "thematicAnchor", "thoughtful", 0.35, "co_signal");
     }
   }
 
-  if (realism <= -0.2 && (hasStrongCandidate(candidates, "science fiction") || hasStrongCandidate(candidates, "fantasy"))) {
+  if (realism <= -0.2 && (hasStrongCandidate(candidates, "science fiction", 0.25) || hasStrongCandidate(candidates, "fantasy", 0.25))) {
     bumpCandidate(candidates, "thematicAnchor", "speculative", 0.25, "co_signal");
+  }
+
+  if (realism <= -0.5) {
+    bumpCandidate(candidates, "thematicAnchor", "speculative", 0.7, "co_signal");
   }
 
   if (darkness >= 0.15 && !hasStrongCandidate(candidates, "horror")) {
@@ -365,6 +437,10 @@ function runCoSignalRouting(candidates: Candidate[], axes?: TasteAxes): Candidat
   if (pacing >= 0.2) {
     if (!hasStrongCandidate(candidates, "adventure")) bumpCandidate(candidates, "genreAnchor", "adventure", 0.2, "co_signal");
     if (!hasStrongCandidate(candidates, "survival")) bumpCandidate(candidates, "thematicAnchor", "survival", 0.2, "co_signal");
+  }
+
+  if (ideaDensity >= 0.5) {
+    adjustCandidate(candidates, "genreAnchor", "adventure", -0.7);
   }
 
   return candidates;
@@ -443,8 +519,9 @@ export function buildIntentProfile(input: BuildIntentProfileInput): IntentProfil
 
   const candidates = normalizeAndRankCandidates(
     runCoSignalRouting(
-      applyAxisModifiers(generateBaseCandidates(tagCounts), input.tasteProfile?.axes),
-      input.tasteProfile?.axes
+      applyAxisModifiers(generateBaseCandidates(tagCounts), input.tasteProfile?.axes, tagCounts),
+      input.tasteProfile?.axes,
+      tagCounts
     )
   );
 
