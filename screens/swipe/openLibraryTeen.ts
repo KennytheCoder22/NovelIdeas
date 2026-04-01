@@ -11,7 +11,6 @@ function normalizeTokenLocal(s: string) {
   return normalizeToken(s);
 }
 
-// Band-specific tag → keyword mapping (NO guardrails here; guardrail is applied in buildFinalQueryTeen).
 export function tagToKeywordsTeen(tag: string): string[] {
   const [rawKey, rawVal] = tag.split(":");
   const key = (rawKey || "").trim();
@@ -69,14 +68,12 @@ function stripAgeMarkers(tagCounts: TagCounts): TagCounts {
   return out;
 }
 
-// Teen final query starts with guardrails, followed by swipe terms.
 export function buildFinalQueryTeen(tagCounts: TagCounts): string {
   const guardrail = 'subject:fiction subject:"Young Adult Fiction"';
   const cleaned = stripAgeMarkers(tagCounts);
 
   const swipeTermsRaw = buildSwipeTermsQueryFromTagCounts(cleaned, tagToKeywordsTeen).trim();
 
-  // --- phrase combiner patch (surgical improvement) ---
   let swipeTerms = swipeTermsRaw;
 
   if (swipeTerms.includes("epic") && swipeTerms.includes("fantasy")) {
@@ -87,7 +84,6 @@ export function buildFinalQueryTeen(tagCounts: TagCounts): string {
   if (swipeTerms.includes("found family")) {
     swipeTerms = swipeTerms.replace(/\bfound family\b/g, '"found family"');
   }
-  // --- end patch ---
 
   const teenThemeExpansion = ['"coming of age"', "identity", "friendship", "relationships"].join(" ");
 
@@ -121,17 +117,16 @@ export function buildFinalQueryTeen(tagCounts: TagCounts): string {
     mangaWeight >= 4
       ? ""
       : mangaWeight >= 2
-        ? '|| subject:fiction subject:"young adult fiction"'
-        : '|| subject:"young adult fiction" subject:"juvenile fiction" subject:fiction subject:"adventure" subject:"fantasy"';
+        ? 'OR subject:fiction subject:"young adult fiction"'
+        : 'OR subject:"young adult fiction" subject:"juvenile fiction" subject:fiction subject:"adventure" subject:"fantasy"';
 
   if (mangaWeight >= 4) {
-    // Visual-dominant mode: prioritize manga / graphic novel retrieval first.
     return swipeTerms
       ? `${teenFormatExpansion} ${swipeTerms} ${teenThemeExpansion} OR subject:fiction OR ${swipeTerms}`.trim()
       : `${teenFormatExpansion} ${teenThemeExpansion} OR subject:fiction`.trim();
   }
 
   return swipeTerms
-    ? `${proseGuardrail} ${swipeTerms} ${teenThemeExpansion} ${fallbackBlock} || subject:fiction ${teenFormatExpansion}`.trim()
+    ? `${proseGuardrail} ${swipeTerms} ${teenThemeExpansion} ${fallbackBlock} OR subject:fiction ${teenFormatExpansion}`.trim()
     : `${proseGuardrail} ${teenThemeExpansion} ${fallbackBlock} OR subject:fiction OR ${teenFormatExpansion}`.trim();
 }
