@@ -52,6 +52,11 @@ export type QueryGuard =
   | "avoid_confusing_structure"
   | "avoid_hopelessness";
 
+export type AnchorScores = {
+  genre: Record<string, number>;
+  thematic: Record<string, number>;
+};
+
 export type IntentProfile = {
   audience: AudienceBand;
   storyMode?: StoryMode;
@@ -65,6 +70,7 @@ export type IntentProfile = {
   thematicAnchors: string[];
   queryGuards: QueryGuard[];
   retrievalConfidence: number;
+  anchorScores: AnchorScores;
 };
 
 export type QueryBrief = {
@@ -76,4 +82,5 @@ export type QueryBrief = {
   formatBias?: FormatBias;
   queryGuards: QueryGuard[];
   confidence: number;
+  enforcedNonGenre?: string[];
 };
