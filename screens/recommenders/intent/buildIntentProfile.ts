@@ -199,9 +199,26 @@ function isRetrievalSafe(value: string): boolean {
 
 function scoreGenreAnchors(tagCounts: TagCounts, max = 6): Scored<string>[] {
   return Object.entries(tagCounts || {})
-    .filter(([k, v]) => Number(v) > 0 && GENRE_TO_ANCHOR[k])
+    .filter(([k, v]) => {
+      if (Number(v) <= 0) return false;
+
+      const normalized = normalizeKey(k);
+      return Boolean(
+        GENRE_TO_ANCHOR[k] ||
+        GENRE_TO_ANCHOR[`genre:${normalized.replace(/ /g, "_")}`] ||
+        GENRE_TO_ANCHOR[`genre:${normalized}`]
+      );
+    })
     .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .map(([k, v]) => ({ value: GENRE_TO_ANCHOR[k], score: Number(v) || 0 }))
+    .map(([k, v]) => {
+      const normalized = normalizeKey(k);
+      const mapped =
+        GENRE_TO_ANCHOR[k] ||
+        GENRE_TO_ANCHOR[`genre:${normalized.replace(/ /g, "_")}`] ||
+        GENRE_TO_ANCHOR[`genre:${normalized}`];
+
+      return { value: mapped, score: Number(v) || 0 };
+    })
     .filter((v, i, arr) => arr.findIndex((x) => x.value === v.value) === i)
     .slice(0, max);
 }
