@@ -274,27 +274,9 @@ export function buildSwipeTermsQueryFromTagCounts(
     .filter((t) => !String(t).trim().startsWith("-"));
 
   if (!positiveList.length) {
-    const fallback = Object.entries(tagCounts)
-      .filter(([tag, count]) => count > 0 && !isConstraint(tag))
-      .map(([tag, count]) => {
-        const raw = tag.includes(":") ? tag.split(":").slice(1).join(":") : tag;
-        return { term: raw.replace(/[-_]/g, " ").trim(), w: Math.min(3, count) };
-      })
-      .filter((x) => x.term.length > 1 && !isExcludedPhrase(x.term))
-      .sort((a, b) => b.w - a.w);
-
-    const seen = new Set<string>();
-    const picked: string[] = [];
-    for (const f of fallback) {
-      if (seen.has(f.term)) continue;
-      seen.add(f.term);
-      picked.push(f.term);
-      if (picked.length >= 3) break;
-    }
-    return picked.join(" ");
+    return "";
   }
 
-  // Structured query: keep a strong subject anchor, then expand with OR terms.
   const subjectTerms: string[] = [];
   const looseTerms: string[] = [];
 
@@ -302,22 +284,30 @@ export function buildSwipeTermsQueryFromTagCounts(
     const t = String(term).trim();
 
     if (/^subject:/i.test(t)) {
-      subjectTerms.push(t.replace(/^subject:/i, "").replace(/^"+|"+$/g, "").trim());
+      subjectTerms.push(t.replace(/^subject:/i, "").replace(/^"+|"+$/g, ""));
     } else {
-      looseTerms.push(t.replace(/^"+|"+$/g, "").trim());
+      looseTerms.push(t.replace(/^"+|"+$/g, ""));
     }
   }
 
-  if (!subjectTerms.length) {
-    subjectTerms.push("fiction");
-  }
+  const cleanedSubjectTerms = dedupeKeepOrder(
+    subjectTerms
+      .map((t) => String(t).trim())
+      .filter(Boolean)
+  );
 
-  const primary = subjectTerms[0];
+  const cleanedLooseTerms = dedupeKeepOrder(
+    looseTerms
+      .map((t) => String(t).trim())
+      .filter(Boolean)
+  );
+
+  const primary = cleanedSubjectTerms[0] || "fiction";
 
   const expansionPool = dedupeKeepOrder([
-    ...subjectTerms.slice(1),
-    ...looseTerms,
-  ]).filter(Boolean);
+    ...cleanedSubjectTerms.slice(1),
+    ...cleanedLooseTerms,
+  ]).filter((t) => normalizeStopToken(t) !== normalizeStopToken(primary));
 
   const expansion = expansionPool.slice(0, 3);
 
@@ -464,7 +454,7 @@ function rankOpenLibraryTerms(terms: string[]): string[] {
   });
 
   scored.sort((a, b) => {
-    if (b.score != a.score) return b.score - a.score;
+    if (b.score !== a.score) return b.score - a.score;
     return a.idx - b.idx;
   });
 
@@ -686,7 +676,7 @@ export async function openLibrarySearch(
           subtitle: vi?.subtitle,
           author_name: Array.isArray(vi?.authors) ? vi.authors : undefined,
           authors: Array.isArray(vi?.authors) ? vi.authors : undefined,
-          first_publish_year: Number.isFinite(year) ? year : undefined,
+          first_publish_year: Number.isFinite(year as any) ? (year as number) : undefined,
           cover_i: cleanThumb,
           publisher: typeof vi?.publisher === "string" ? vi.publisher : undefined,
           categories: Array.isArray(vi?.categories) ? vi.categories : undefined,
