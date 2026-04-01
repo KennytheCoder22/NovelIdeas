@@ -166,56 +166,78 @@ function findNextDistinctAnchor(selected: AnchorCandidate[], candidates: AnchorC
 }
 
 function selectAnchors(intent: IntentProfile): { selected: string[]; enforcedNonGenre: string[] } {
+  const maxSelected = 3;
+
   const candidates = buildAnchorCandidates(intent)
     .filter((candidate) => candidate.value && !WEAK_ANCHORS.has(candidate.value))
     .sort(compareAnchorCandidates);
 
   const selected: AnchorCandidate[] = [];
 
-  for (const candidate of candidates) {
-    if (selected.some((existing) => overlaps(existing.value, candidate.value))) continue;
+  const chooseCandidate = (candidate: AnchorCandidate) => {
+    if (selected.some((existing) => overlaps(existing.value, candidate.value))) return false;
+    if (selected.some((existing) => existing.value === candidate.value && existing.type === candidate.type)) return false;
     selected.push(candidate);
-    if (selected.length === 2) break;
+    return true;
+  };
+
+  const safeGenreValues = intent.genreAnchors.filter((value) => RETRIEVAL_SAFE.has(value));
+  const safeGenreCandidates = safeGenreValues
+    .map((value, index) => ({
+      value,
+      type: "genre" as const,
+      score: getAnchorScore(intent, "genre", value, Math.max(0.35, 0.8 - index * 0.08)),
+    }))
+    .sort(compareAnchorCandidates);
+
+  const thematicPriority = candidates.filter((candidate) => candidate.type === "thematic");
+  const genrePriority = candidates.filter((candidate) => candidate.type === "genre");
+  const otherPriority = candidates.filter((candidate) => candidate.type !== "thematic" && candidate.type !== "genre");
+
+  const primaryPools = [thematicPriority, genrePriority, otherPriority];
+
+  for (const pool of primaryPools) {
+    for (const candidate of pool) {
+      chooseCandidate(candidate);
+      if (selected.length >= 2) break;
+    }
+    if (selected.length >= 2) break;
   }
 
-  if (!selected.some((candidate) => RETRIEVAL_SAFE.has(candidate.value))) {
-    const safeGenre = intent.genreAnchors.find((value) => RETRIEVAL_SAFE.has(value));
+  if (!selected.some((candidate) => candidate.type === "genre" && RETRIEVAL_SAFE.has(candidate.value))) {
+    const safeGenre = findNextDistinctAnchor(selected, safeGenreCandidates);
     if (safeGenre) {
-      const safeGenreCandidate = {
-        value: safeGenre,
-        type: "genre" as const,
-        score: getAnchorScore(intent, "genre", safeGenre, 0.5),
-      };
       const replacementIndex = selected.findIndex((candidate) => candidate.type === "genre");
       if (replacementIndex >= 0) {
-        selected[replacementIndex] = safeGenreCandidate;
-      } else if (selected.length < 2) {
-        selected.push(safeGenreCandidate);
-      } else {
-        selected[selected.length - 1] = safeGenreCandidate;
+        selected[replacementIndex] = safeGenre;
+      } else if (selected.length < maxSelected) {
+        selected.push(safeGenre);
+      } else if (selected.length > 0) {
+        selected[selected.length - 1] = safeGenre;
       }
     }
   }
 
   const fallbackCandidates = buildAnchorCandidates(intent).sort(compareAnchorCandidates);
 
-  for (const candidate of fallbackCandidates) {
-    if (selected.length >= 2) break;
-    if (WEAK_ANCHORS.has(candidate.value)) continue;
-    if (selected.some((existing) => overlaps(existing.value, candidate.value))) continue;
-    selected.push(candidate);
-  }
-
-  if (selected.length === 1) {
-    const retrievalSafeFallbacks = fallbackCandidates.filter((candidate) => RETRIEVAL_SAFE.has(candidate.value));
-    const forcedSecond =
-      findNextDistinctAnchor(selected, retrievalSafeFallbacks) ||
+  while (selected.length < maxSelected) {
+    const next =
+      findNextDistinctAnchor(selected, thematicPriority) ||
+      findNextDistinctAnchor(selected, safeGenreCandidates) ||
       findNextDistinctAnchor(selected, fallbackCandidates);
 
-    if (forcedSecond) selected.push(forcedSecond);
+    if (!next) break;
+    selected.push(next);
   }
 
-  const finalSelected = selected.slice(0, 2);
+  if (!selected.length) {
+    const hardFallback =
+      findNextDistinctAnchor(selected, safeGenreCandidates) ||
+      findNextDistinctAnchor(selected, fallbackCandidates);
+    if (hardFallback) selected.push(hardFallback);
+  }
+
+  const finalSelected = selected.slice(0, maxSelected);
   const enforcedNonGenre = finalSelected
     .filter((candidate) => candidate.type !== "genre")
     .map((candidate) => candidate.value);
@@ -233,7 +255,7 @@ export function buildQueryBrief(intent: IntentProfile): QueryBrief & { enforcedN
   const { selected, enforcedNonGenre } = selectAnchors(intent);
 
   const genreAnchors = selected.filter((value) => intent.genreAnchors.includes(value)).slice(0, 2);
-  const thematicAnchors = selected.filter((value) => intent.thematicAnchors.includes(value)).slice(0, 2);
+  const thematicAnchors = selected.filter((value) => intent.thematicAnchors.includes(value)).slice(0, 3);
 
   if (toneAnchor && selected.includes(toneAnchor) && !thematicAnchors.includes(toneAnchor)) {
     thematicAnchors.unshift(toneAnchor);
@@ -246,7 +268,7 @@ export function buildQueryBrief(intent: IntentProfile): QueryBrief & { enforcedN
   return {
     audience: intent.audience,
     genreAnchors,
-    thematicAnchors: thematicAnchors.slice(0, 2),
+    thematicAnchors: thematicAnchors.slice(0, 3),
     protagonistAnchor: protagonistAnchor && selected.includes(protagonistAnchor) ? protagonistAnchor : undefined,
     toneAnchor: toneAnchor && selected.includes(toneAnchor) ? toneAnchor : undefined,
     formatBias: intent.formatBias as FormatBias | undefined,
